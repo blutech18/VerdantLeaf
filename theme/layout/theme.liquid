@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="{{ request.locale.iso_code }}" class="no-js">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+  <title>
+    {%- if page_title -%}
+      {{ page_title }} — {{ shop.name }}
+    {%- else -%}
+      {{ shop.name }}
+    {%- endif -%}
+  </title>
+
+  {% if page_description %}
+    <meta name="description" content="{{ page_description | escape }}">
+  {% endif %}
+
+  <!-- Theme Styles -->
+  {{ 'base.css' | asset_url | stylesheet_tag }}
+  {{ 'sections.css' | asset_url | stylesheet_tag }}
+  {{ 'quiz.css' | asset_url | stylesheet_tag }}
+
+  <!-- Canonical URL -->
+  <link rel="canonical" href="{{ canonical_url }}">
+
+  <!-- Favicon -->
+  {% if settings.favicon != blank %}
+    <link rel="icon" type="image/png" href="{{ settings.favicon | image_url: width: 32 }}">
+  {% endif %}
+
+  {% # theme-check-disable ContentForHeaderModification %}
+  {% capture shopify_header %}
+    {{ content_for_header }}
+  {% endcapture %}
+
+  {% capture digital_wallet_meta %}<meta id="shopify-digital-wallet" name="shopify-digital-wallet" content="/{{ shop.id }}/digital_wallets/dialog">{% endcapture %}
+  {% assign shopify_header = shopify_header | replace: digital_wallet_meta, '' %}
+  {% assign shopify_header = shopify_header | replace: '<script async="async" src="/checkouts/internal/preloads.js?locale=en-US"></script>', '' %}
+  {% assign shopify_header = shopify_header | replace: '<script async="async" src="/checkouts/internal/preloads.js?locale=en"></script>', '' %}
+  {% assign shopify_header = shopify_header | replace: 'Shopify.shopJsCdnBaseUrl = "https://cdn.shopify.com/shopifycloud/shop-js";', '' %}
+  {% assign shopify_header = shopify_header | replace: 'Shopify.SignInWithShop = Shopify.SignInWithShop || {};', '' %}
+  {% assign shopify_header = shopify_header | replace: 'Shopify.SignInWithShop.User = Shopify.SignInWithShop.User || {};', '' %}
+  {% assign shopify_header = shopify_header | replace: 'Shopify.SignInWithShop.User.recognized = false;', '' %}
+  {% assign shopify_header = shopify_header | replace: 'window.Shopify.SignInWithShop = window.Shopify.SignInWithShop || {};', '' %}
+  {% assign shopify_header = shopify_header | replace: 'window.Shopify.SignInWithShop.assetMetrics = { sampleRate: 0.01 };', '' %}
+  {% assign shopify_header = shopify_header | replace: 'window.Shopify.SignInWithShop.eligible = true;', '' %}
+
+  {% capture sign_in_with_shop_metrics %}
+<script>
+  window.Shopify = window.Shopify || {};
+  window.Shopify.SignInWithShop = window.Shopify.SignInWithShop || {};
+  window.Shopify.SignInWithShop.assetMetrics = { sampleRate: 0.01 };
+  window.Shopify.SignInWithShop.eligible = true;
+</script>
+  {% endcapture %}
+  {% assign shopify_header = shopify_header | replace: sign_in_with_shop_metrics, '' %}
+
+  {% if shopify_header contains 'data-source-attribution="shopify.dynamic_checkout.dynamic.init"' %}
+    {% assign header_before = shopify_header | split: '<script data-source-attribution="shopify.dynamic_checkout.dynamic.init">' | first %}
+    {% assign header_after = shopify_header | split: '<script data-source-attribution="shopify.dynamic_checkout.dynamic.init">' | last | split: '</script>' | last %}
+    {% capture shopify_header %}{{ header_before }}{{ header_after }}{% endcapture %}
+  {% endif %}
+
+  {% if shopify_header contains 'data-source-attribution="shopify.dynamic_checkout.buyer_consent"' %}
+    {% assign header_before = shopify_header | split: '<script data-source-attribution="shopify.dynamic_checkout.buyer_consent">' | first %}
+    {% assign header_after = shopify_header | split: '<script data-source-attribution="shopify.dynamic_checkout.buyer_consent">' | last | split: '</script>' | last %}
+    {% capture shopify_header %}{{ header_before }}{{ header_after }}{% endcapture %}
+  {% endif %}
+
+  {% if shopify_header contains 'data-source-attribution="shopify.dynamic_checkout.cart.bootstrap"' %}
+    {% assign header_before = shopify_header | split: '<script data-source-attribution="shopify.dynamic_checkout.cart.bootstrap">' | first %}
+    {% assign header_after = shopify_header | split: '<script data-source-attribution="shopify.dynamic_checkout.cart.bootstrap">' | last | split: '</script>' | last %}
+    {% capture shopify_header %}{{ header_before }}{{ header_after }}{% endcapture %}
+  {% endif %}
+
+  {% if shopify_header contains '<script id="shop-js-analytics"' %}
+    {% assign header_before = shopify_header | split: '<script id="shop-js-analytics"' | first %}
+    {% assign header_after = shopify_header | split: '<script id="shop-js-analytics"' | last | split: '</script>' | last %}
+    {% capture shopify_header %}{{ header_before }}{{ header_after }}{% endcapture %}
+  {% endif %}
+
+  {% if shopify_header contains 'loader.init-shop-cart-sync' %}
+    {% assign header_before = shopify_header | split: '<script defer="defer" async type="module" src="/cdn/shopifycloud/shop-js/modules/v2/loader.init-shop-cart-sync.en.esm.js">' | first %}
+    {% assign header_after = shopify_header | split: '<script defer="defer" async type="module" src="/cdn/shopifycloud/shop-js/modules/v2/loader.init-shop-cart-sync.en.esm.js">' | last | split: '</script>' | last %}
+    {% capture shopify_header %}{{ header_before }}{{ header_after }}{% endcapture %}
+  {% endif %}
+
+  {% if shopify_header contains 'await import("/cdn/shopifycloud/shop-js/modules/v2/loader.init-shop-cart-sync.en.esm.js");' %}
+    {% assign header_before = shopify_header | split: '<script type="module">' | first %}
+    {% assign header_after = shopify_header | split: 'await import("/cdn/shopifycloud/shop-js/modules/v2/loader.init-shop-cart-sync.en.esm.js");' | last | split: '</script>' | last %}
+    {% capture shopify_header %}{{ header_before }}{{ header_after }}{% endcapture %}
+  {% endif %}
+
+  {% if shopify_header contains "window.Shopify.featureAssets['shop-js']" %}
+    {% assign header_before = shopify_header | split: '<script>' | first %}
+    {% assign header_after = shopify_header | split: "window.Shopify.featureAssets['shop-js']" | last | split: '</script>' | last %}
+    {% capture shopify_header %}{{ header_before }}{{ header_after }}{% endcapture %}
+  {% endif %}
+
+  {{ shopify_header }}
+  {% # theme-check-enable ContentForHeaderModification %}
+
+  <script>
+    document.documentElement.classList.replace('no-js', 'js');
+  </script>
+</head>
+<body class="template-{{ template.name | handle }}{% if template.suffix %} template-{{ template.name }}-{{ template.suffix }}{% endif %}">
+
+  <a href="#main-content" class="visually-hidden">{{ 'general.skip_to_content' | t }}</a>
+
+  {% section 'header' %}
+
+  <main id="main-content" role="main">
+    {{ content_for_layout }}
+  </main>
+
+  {% section 'footer' %}
+
+  <!-- Scroll animation observer -->
+  <script>
+    // Intersection Observer for scroll-triggered animations
+    (function() {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('is-visible');
+              observer.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
+      );
+
+      document.querySelectorAll('.animate-on-scroll').forEach(el => observer.observe(el));
+    })();
+
+    // Header scroll state
+    (function() {
+      const header = document.querySelector('.site-header');
+      if (!header) return;
+
+      let lastScroll = 0;
+      window.addEventListener('scroll', () => {
+        const currentScroll = window.pageYOffset;
+        if (currentScroll > 50) {
+          header.classList.add('scrolled');
+        } else {
+          header.classList.remove('scrolled');
+        }
+        lastScroll = currentScroll;
+      }, { passive: true });
+    })();
+
+    // Mobile menu toggle
+    (function() {
+      const toggle = document.querySelector('.header__menu-toggle');
+      const nav = document.querySelector('.header__nav');
+      if (!toggle || !nav) return;
+
+      toggle.addEventListener('click', () => {
+        nav.classList.toggle('is-open');
+        const isOpen = nav.classList.contains('is-open');
+        toggle.setAttribute('aria-expanded', isOpen);
+      });
+    })();
+
+    // Parallax effect for hero
+    (function() {
+      const heroImage = document.querySelector('.hero__bg-image');
+      if (!heroImage) return;
+
+      window.addEventListener('scroll', () => {
+        const scroll = window.pageYOffset;
+        const speed = 0.4;
+        heroImage.style.transform = `translateY(${scroll * speed}px)`;
+      }, { passive: true });
+    })();
+  </script>
+</body>
+</html>

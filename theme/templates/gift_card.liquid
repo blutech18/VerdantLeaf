@@ -1,0 +1,89 @@
+{% comment %}
+  Verdant Leaf — Gift Card Template
+  Kept in the theme so Shopify CLI does not try to delete the required remote gift card template.
+{% endcomment %}
+
+<div class="gift-card-page">
+  <div class="container container--narrow">
+    <div class="gift-card animate-on-scroll">
+      <span class="section-label">Verdant Leaf</span>
+      <h1 class="section-title">{{ gift_card.product.title | default: 'Gift Card' }}</h1>
+
+      <div class="gift-card__panel">
+        <p class="gift-card__balance">
+          {{ gift_card.balance | money }}
+        </p>
+
+        {% if gift_card.enabled %}
+          <p class="gift-card__code-label">Gift card code</p>
+          <p class="gift-card__code">{{ gift_card.code | format_code }}</p>
+        {% else %}
+          <p class="gift-card__status">This gift card is no longer active.</p>
+        {% endif %}
+
+        {% if gift_card.expires_on %}
+          <p class="gift-card__meta">
+            Expires {{ gift_card.expires_on | date: '%B %d, %Y' }}
+          </p>
+        {% endif %}
+
+        <a href="{{ routes.root_url }}" class="btn btn--primary">
+          Visit {{ shop.name }}
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .gift-card-page {
+    min-height: 70vh;
+    padding: var(--space-4xl) 0;
+    background: var(--color-linen);
+  }
+
+  .gift-card {
+    text-align: center;
+  }
+
+  .gift-card__panel {
+    margin: var(--space-xl) auto 0;
+    padding: var(--space-2xl);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+  }
+
+  .gift-card__balance {
+    font-family: var(--font-heading);
+    font-size: var(--text-3xl);
+    color: var(--color-forest-dark);
+    margin-bottom: var(--space-lg);
+  }
+
+  .gift-card__code-label {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .gift-card__code {
+    display: inline-block;
+    margin: var(--space-sm) 0 var(--space-lg);
+    padding: var(--space-sm) var(--space-lg);
+    border: 1px dashed var(--color-gold-dark);
+    border-radius: var(--radius-sm);
+    color: var(--color-forest-dark);
+    font-size: var(--text-lg);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+  }
+
+  .gift-card__status,
+  .gift-card__meta {
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-lg);
+  }
+</style>

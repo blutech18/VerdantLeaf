@@ -1,0 +1,691 @@
+{% comment %}
+  Verdant Leaf - Dynamic Tea Origin Map
+  Builds map markers from the live Shopify catalog.
+{% endcomment %}
+
+{% assign catalog_collection = collections.all %}
+
+<section class="section origin-map" id="origin-map" data-origin-section>
+  <div class="container">
+    <div class="text-center mb-xl animate-on-scroll">
+      <span class="section-label">{{ section.settings.label | default: 'Global Origins' }}</span>
+      <h2 class="section-title">{{ section.settings.title | default: 'Where Our Teas Grow' }}</h2>
+      <p class="section-subtitle centered">
+        {{ section.settings.subtitle | default: 'Each marker is generated from real Shopify product data and mapped to its tea origin.' }}
+      </p>
+    </div>
+
+    <div class="origin-map__wrapper animate-on-scroll stagger-1">
+      <div class="origin-map__map-card">
+        <div
+          class="origin-map__canvas"
+          id="origin-map-canvas-{{ section.id }}"
+          data-origin-map-canvas
+          aria-label="Interactive map of tea product origins"
+        ></div>
+        <div class="origin-map__map-footer">
+          <span>Product markers are generated from the live Shopify catalog.</span>
+          <span>Map data &copy; OpenStreetMap contributors.</span>
+        </div>
+      </div>
+
+      <article class="origin-map__details" id="origin-details" aria-live="polite">
+        <div class="origin-map__details-header">
+          <div>
+            <span class="section-label" id="origin-region-label">Product Origin</span>
+            <span class="origin-map__counter" data-origin-counter>1 of 1</span>
+          </div>
+          <div class="origin-map__nav" aria-label="Browse mapped tea products">
+            <button class="origin-map__nav-button" type="button" data-origin-prev aria-label="Previous product origin">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+            <button class="origin-map__nav-button" type="button" data-origin-next aria-label="Next product origin">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <h3 class="origin-map__product-heading" id="origin-product-title">Select a tea marker</h3>
+        
+        <p class="origin-map__note" id="origin-product-note">
+          Origin, supplier, SKU, price, and availability will appear here as you browse the catalog.
+        </p>
+
+        <div class="origin-map__details-grid">
+          <div class="origin-map__detail-item">
+            <span class="detail-label">Origin</span>
+            <span class="detail-value" id="origin-stat-origin">-</span>
+          </div>
+          <div class="origin-map__detail-item">
+            <span class="detail-label">Type</span>
+            <span class="detail-value" id="origin-stat-type">-</span>
+          </div>
+          <div class="origin-map__detail-item">
+            <span class="detail-label">Vendor</span>
+            <span class="detail-value" id="origin-stat-vendor">-</span>
+          </div>
+          <div class="origin-map__detail-item">
+            <span class="detail-label">SKU</span>
+            <span class="detail-value" id="origin-stat-sku">-</span>
+          </div>
+        </div>
+
+        <div class="origin-map__action-row">
+          <div class="origin-map__price-wrapper">
+            <span class="origin-map__price" id="origin-stat-price">-</span>
+            <span id="origin-stat-status" class="origin-map__status-badge">-</span>
+          </div>
+          <a class="btn btn--primary btn--sm origin-map__link" id="origin-product-link" href="{{ routes.all_products_collection_url }}">
+            View product
+          </a>
+        </div>
+
+        <div class="origin-map__product-list" data-origin-product-list aria-label="Tea products with mapped origins">
+          {% assign rendered_products = 0 %}
+          {% if catalog_collection != blank and catalog_collection.products.size > 0 %}
+            {% for product in catalog_collection.products limit: 24 %}
+              {% assign product_tags = product.tags | join: ' ' %}
+              {% assign product_lookup = product.title | append: ' ' | append: product.type | append: ' ' | append: product.vendor | append: ' ' | append: product_tags | downcase %}
+
+              {% if product_lookup contains 'tea' or product_lookup contains 'matcha' or product_lookup contains 'sencha' or product_lookup contains 'oolong' or product_lookup contains 'puerh' or product_lookup contains 'pu-erh' or product_lookup contains 'jasmine' or product_lookup contains 'chamomile' or product_lookup contains 'darjeeling' %}
+                {% assign product_origin = product.metafields.custom.origin.value | default: product.metafields.custom.origin %}
+                {% assign origin_lat = product.metafields.custom.latitude.value | default: product.metafields.custom.origin_latitude.value %}
+                {% assign origin_lng = product.metafields.custom.longitude.value | default: product.metafields.custom.origin_longitude.value %}
+                {% assign origin_summary = 'This marker is generated from the imported Shopify product data and supplier details.' %}
+
+                {% if product_origin == blank or origin_lat == blank or origin_lng == blank %}
+                  {% if product_lookup contains 'fujian' or product_lookup contains 'jasmine' %}
+                    {% assign product_origin = 'Fujian, China' %}
+                    {% assign origin_lat = '26.0745' %}
+                    {% assign origin_lng = '119.2965' %}
+                    {% assign origin_summary = 'Fujian jasmine pearls are hand-rolled and scented with blossoms for a smooth floral cup.' %}
+                  {% elsif product_lookup contains 'uji' or product_lookup contains 'japan' %}
+                    {% assign product_origin = 'Uji, Japan' %}
+                    {% assign origin_lat = '34.8844' %}
+                    {% assign origin_lng = '135.7997' %}
+                    {% assign origin_summary = 'Uji teas in this catalog are shade-grown, steamed, or stone-ground for vivid color and umami depth.' %}
+                  {% elsif product_lookup contains 'darjeeling' or product_lookup contains 'india' %}
+                    {% assign product_origin = 'Darjeeling, India' %}
+                    {% assign origin_lat = '27.0410' %}
+                    {% assign origin_lng = '88.2663' %}
+                    {% assign origin_summary = 'Darjeeling first flush lots are selected for brisk body, citrus lift, and muscatel aroma.' %}
+                  {% elsif product_lookup contains 'ali shan' or product_lookup contains 'taiwan' %}
+                    {% assign product_origin = 'Ali Shan, Taiwan' %}
+                    {% assign origin_lat = '23.5086' %}
+                    {% assign origin_lng = '120.8014' %}
+                    {% assign origin_summary = 'Ali Shan high-mountain oolong is chosen for creamy texture, orchid aromatics, and repeat infusions.' %}
+                  {% elsif product_lookup contains 'yunnan' %}
+                    {% assign product_origin = 'Yunnan, China' %}
+                    {% assign origin_lat = '24.4753' %}
+                    {% assign origin_lng = '101.3431' %}
+                    {% assign origin_summary = 'Yunnan teas supply black tea and pu-erh lots with malt, cacao, dark fruit, and aged-earth character.' %}
+                  {% elsif product_lookup contains 'fuding' %}
+                    {% assign product_origin = 'Fuding, China' %}
+                    {% assign origin_lat = '27.3270' %}
+                    {% assign origin_lng = '120.2179' %}
+                    {% assign origin_summary = 'Fuding white tea lots are bud-forward and slow-withered for soft sweetness and clean minerality.' %}
+                  {% elsif product_lookup contains 'egypt' or product_lookup contains 'chamomile' %}
+                    {% assign product_origin = 'Nile Delta, Egypt' %}
+                    {% assign origin_lat = '30.8025' %}
+                    {% assign origin_lng = '30.9935' %}
+                    {% assign origin_summary = 'The herbal lot uses whole chamomile flowers with lemon balm and lavender for a caffeine-free evening cup.' %}
+                  {% endif %}
+                {% endif %}
+
+                {% if product_origin != blank and origin_lat != blank and origin_lng != blank %}
+                  {% assign variant = product.selected_or_first_available_variant %}
+                  {% assign product_note = product.description | replace: '</p>', ' ' | replace: '<br>', ' ' | replace: '<br />', ' ' | strip_html | strip_newlines | truncate: 180 %}
+                  {% if product_note == blank %}
+                    {% assign product_note = origin_summary %}
+                  {% endif %}
+                  {% assign product_type = product.type | default: 'Tea' %}
+
+                  <button
+                    class="origin-map__product{% if rendered_products == 0 %} is-active{% endif %}"
+                    type="button"
+                    data-origin-product="{{ rendered_products }}"
+                    aria-pressed="{% if rendered_products == 0 %}true{% else %}false{% endif %}"
+                  >
+                    <span class="origin-map__product-index">{{ rendered_products | plus: 1 }}</span>
+                    <span class="origin-map__product-body">
+                      <span class="origin-map__product-title">{{ product.title }}</span>
+                      <span class="origin-map__product-meta">{{ product_origin }} / {{ product_type }}</span>
+                    </span>
+                    <span class="origin-map__product-price">{{ product.price | money }}</span>
+                  </button>
+
+                  {% assign rendered_products = rendered_products | plus: 1 %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+
+          {% if rendered_products == 0 %}
+            <p class="origin-map__empty">No Shopify products with mapped tea origins were found.</p>
+          {% endif %}
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<script>
+  (function() {
+    const section = document.querySelector('[data-origin-section]');
+    if (!section) return;
+
+    const products = [];
+    {% if catalog_collection != blank and catalog_collection.products.size > 0 %}
+      {% for product in catalog_collection.products limit: 24 %}
+        {% assign product_tags = product.tags | join: ' ' %}
+        {% assign product_lookup = product.title | append: ' ' | append: product.type | append: ' ' | append: product.vendor | append: ' ' | append: product_tags | downcase %}
+
+        {% if product_lookup contains 'tea' or product_lookup contains 'matcha' or product_lookup contains 'sencha' or product_lookup contains 'oolong' or product_lookup contains 'puerh' or product_lookup contains 'pu-erh' or product_lookup contains 'jasmine' or product_lookup contains 'chamomile' or product_lookup contains 'darjeeling' %}
+          {% assign product_origin = product.metafields.custom.origin.value | default: product.metafields.custom.origin %}
+          {% assign origin_lat = product.metafields.custom.latitude.value | default: product.metafields.custom.origin_latitude.value %}
+          {% assign origin_lng = product.metafields.custom.longitude.value | default: product.metafields.custom.origin_longitude.value %}
+          {% assign origin_summary = 'This marker is generated from the imported Shopify product data and supplier details.' %}
+
+          {% if product_origin == blank or origin_lat == blank or origin_lng == blank %}
+            {% if product_lookup contains 'fujian' or product_lookup contains 'jasmine' %}
+              {% assign product_origin = 'Fujian, China' %}
+              {% assign origin_lat = '26.0745' %}
+              {% assign origin_lng = '119.2965' %}
+              {% assign origin_summary = 'Fujian jasmine pearls are hand-rolled and scented with blossoms for a smooth floral cup.' %}
+            {% elsif product_lookup contains 'uji' or product_lookup contains 'japan' %}
+              {% assign product_origin = 'Uji, Japan' %}
+              {% assign origin_lat = '34.8844' %}
+              {% assign origin_lng = '135.7997' %}
+              {% assign origin_summary = 'Uji teas in this catalog are shade-grown, steamed, or stone-ground for vivid color and umami depth.' %}
+            {% elsif product_lookup contains 'darjeeling' or product_lookup contains 'india' %}
+              {% assign product_origin = 'Darjeeling, India' %}
+              {% assign origin_lat = '27.0410' %}
+              {% assign origin_lng = '88.2663' %}
+              {% assign origin_summary = 'Darjeeling first flush lots are selected for brisk body, citrus lift, and muscatel aroma.' %}
+            {% elsif product_lookup contains 'ali shan' or product_lookup contains 'taiwan' %}
+              {% assign product_origin = 'Ali Shan, Taiwan' %}
+              {% assign origin_lat = '23.5086' %}
+              {% assign origin_lng = '120.8014' %}
+              {% assign origin_summary = 'Ali Shan high-mountain oolong is chosen for creamy texture, orchid aromatics, and repeat infusions.' %}
+            {% elsif product_lookup contains 'yunnan' %}
+              {% assign product_origin = 'Yunnan, China' %}
+              {% assign origin_lat = '24.4753' %}
+              {% assign origin_lng = '101.3431' %}
+              {% assign origin_summary = 'Yunnan teas supply black tea and pu-erh lots with malt, cacao, dark fruit, and aged-earth character.' %}
+            {% elsif product_lookup contains 'fuding' %}
+              {% assign product_origin = 'Fuding, China' %}
+              {% assign origin_lat = '27.3270' %}
+              {% assign origin_lng = '120.2179' %}
+              {% assign origin_summary = 'Fuding white tea lots are bud-forward and slow-withered for soft sweetness and clean minerality.' %}
+            {% elsif product_lookup contains 'egypt' or product_lookup contains 'chamomile' %}
+              {% assign product_origin = 'Nile Delta, Egypt' %}
+              {% assign origin_lat = '30.8025' %}
+              {% assign origin_lng = '30.9935' %}
+              {% assign origin_summary = 'The herbal lot uses whole chamomile flowers with lemon balm and lavender for a caffeine-free evening cup.' %}
+            {% endif %}
+          {% endif %}
+
+          {% if product_origin != blank and origin_lat != blank and origin_lng != blank %}
+            {% assign variant = product.selected_or_first_available_variant %}
+            {% assign product_note = product.description | replace: '</p>', ' ' | replace: '<br>', ' ' | replace: '<br />', ' ' | strip_html | strip_newlines | truncate: 180 %}
+            {% if product_note == blank %}
+              {% assign product_note = origin_summary %}
+            {% endif %}
+            products.push({
+              title: {{ product.title | json }},
+              origin: {{ product_origin | json }},
+              type: {{ product.type | default: 'Tea' | json }},
+              vendor: {{ product.vendor | default: 'Verdant Leaf' | json }},
+              price: {{ product.price | money | json }},
+              sku: {{ variant.sku | default: 'SKU pending' | json }},
+              status: {% if product.available %}'Available'{% else %}'Sold out'{% endif %},
+              summary: {{ origin_summary | json }},
+              note: {{ product_note | json }},
+              url: {{ product.url | json }},
+              lat: {{ origin_lat }},
+              lng: {{ origin_lng }}
+            });
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+
+    const mapEl = section.querySelector('[data-origin-map-canvas]');
+    const productButtons = Array.from(section.querySelectorAll('[data-origin-product]'));
+    const details = section.querySelector('#origin-details');
+    const counter = section.querySelector('[data-origin-counter]');
+    const prevButton = section.querySelector('[data-origin-prev]');
+    const nextButton = section.querySelector('[data-origin-next]');
+    const fields = {
+      label: section.querySelector('#origin-region-label'),
+      title: section.querySelector('#origin-product-title'),
+      info: section.querySelector('#origin-region-info'),
+      origin: section.querySelector('#origin-stat-origin'),
+      vendor: section.querySelector('#origin-stat-vendor'),
+      type: section.querySelector('#origin-stat-type'),
+      sku: section.querySelector('#origin-stat-sku'),
+      status: section.querySelector('#origin-stat-status'),
+      price: section.querySelector('#origin-stat-price'),
+      note: section.querySelector('#origin-product-note'),
+      link: section.querySelector('#origin-product-link')
+    };
+    const markersByIndex = new Map();
+    let activeMarker = null;
+    let activeIndex = 0;
+    let originMap = null;
+    let initialView = null;
+    let isSelecting = false;
+
+    function setText(node, value) {
+      if (node) node.textContent = value || '-';
+    }
+
+    function normalizeWheelDelta(value, mode) {
+      if (mode === 1) return value * 16;
+      if (mode === 2) return value * window.innerHeight;
+      return value;
+    }
+
+    function releaseMapFocus() {
+      const activeElement = document.activeElement;
+      if (mapEl && activeElement instanceof HTMLElement && mapEl.contains(activeElement)) {
+        activeElement.blur();
+      }
+    }
+
+    function preservePageWheelScroll() {
+      if (!mapEl) return;
+
+      mapEl.addEventListener('wheel', event => {
+        if (event.ctrlKey || event.metaKey) return;
+
+        event.preventDefault();
+        window.scrollBy({
+          left: normalizeWheelDelta(event.deltaX, event.deltaMode),
+          top: normalizeWheelDelta(event.deltaY, event.deltaMode),
+          behavior: 'auto'
+        });
+      }, { capture: true, passive: false });
+
+      mapEl.addEventListener('mousedown', () => window.setTimeout(releaseMapFocus, 0), true);
+      mapEl.addEventListener('click', () => window.setTimeout(releaseMapFocus, 0), true);
+    }
+
+    function escapeHtml(value) {
+      return String(value || '').replace(/[&<>"']/g, character => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      }[character]));
+    }
+
+    function setMarkerActive(marker) {
+      if (!window.L || !marker || !marker.setStyle) return;
+
+      resetActiveMarker();
+
+      marker.setStyle({
+        radius: (marker.options.baseRadius || 8) + 3,
+        color: '#0f2418',
+        fillColor: '#1a3c2a',
+        fillOpacity: 1,
+        weight: 3
+      });
+      activeMarker = marker;
+    }
+
+    function resetActiveMarker() {
+      if (activeMarker && activeMarker.setStyle) {
+        activeMarker.setStyle({
+          radius: activeMarker.options.baseRadius || 8,
+          color: '#1a3c2a',
+          fillColor: '#c8a45c',
+          fillOpacity: 0.92,
+          weight: 2
+        });
+      }
+      activeMarker = null;
+    }
+
+    function restoreMapView() {
+      if (!originMap) return;
+
+      isSelecting = true;
+      originMap.closePopup();
+      resetActiveMarker();
+      isSelecting = false;
+
+      if (initialView) {
+        originMap.flyTo(initialView.center, initialView.zoom, {
+          animate: true,
+          duration: 1.0,
+          easeLinearity: 0.2
+        });
+      }
+    }
+
+    function zoomToMarker(marker) {
+      if (!originMap || !marker || !marker.getLatLng) return;
+
+      const maxZoom = originMap.getMaxZoom ? originMap.getMaxZoom() : 11;
+      originMap.flyTo(marker.getLatLng(), maxZoom, {
+        animate: true,
+        duration: 1.2,
+        easeLinearity: 0.2
+      });
+    }
+
+    function isMapZoomedOn(marker) {
+      if (!originMap || !marker || !marker.getLatLng) return false;
+      const currentZoom = originMap.getZoom();
+      const currentCenter = originMap.getCenter();
+      const maxZoom = originMap.getMaxZoom() || 11;
+
+      const isZoomedIn = currentZoom >= (maxZoom - 0.5);
+      const distance = currentCenter.distanceTo(marker.getLatLng());
+      return isZoomedIn && distance < 50000; // within 50km
+    }
+
+    function updateControls(index) {
+      activeIndex = index;
+
+      if (counter) {
+        counter.textContent = products.length ? `${index + 1} of ${products.length}` : '0 of 0';
+      }
+
+      [prevButton, nextButton].forEach(button => {
+        if (button) button.disabled = products.length <= 1;
+      });
+    }
+
+    function selectProduct(index, shouldOpenPopup, shouldZoomMap) {
+      if (!products.length) return;
+
+      const productIndex = (index + products.length) % products.length;
+      const product = products[productIndex];
+      if (!product) return;
+
+      productButtons.forEach(button => {
+        const isSelected = Number(button.dataset.originProduct) === productIndex;
+        button.classList.toggle('is-active', isSelected);
+        button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+      });
+
+      updateControls(productIndex);
+      if (details) details.classList.remove('is-ready');
+
+      window.setTimeout(() => {
+        setText(fields.label, product.origin);
+        setText(fields.title, product.title);
+        setText(fields.info, product.summary);
+        setText(fields.origin, product.origin);
+        setText(fields.vendor, product.vendor);
+        setText(fields.type, product.type);
+        setText(fields.sku, product.sku);
+        if (fields.status) {
+          fields.status.textContent = product.status || '-';
+          fields.status.className = 'origin-map__status-badge ' + 
+            (product.status === 'Available' ? 'status--available' : 'status--soldout');
+        }
+        setText(fields.price, product.price);
+        setText(fields.note, product.note);
+
+        if (fields.link) {
+          fields.link.href = product.url || '{{ routes.all_products_collection_url }}';
+          fields.link.setAttribute('aria-label', 'View ' + (product.title || 'product'));
+        }
+
+        const marker = markersByIndex.get(productIndex);
+        if (marker) {
+          setMarkerActive(marker);
+          if (shouldZoomMap) zoomToMarker(marker);
+
+          if (shouldOpenPopup && marker.customPopupContent) {
+            isSelecting = true;
+            window.L.popup({
+              offset: [0, -10],
+              closeButton: true,
+              autoClose: true,
+              closeOnClick: false
+            })
+            .setLatLng(marker.getLatLng())
+            .setContent(marker.customPopupContent)
+            .openOn(originMap);
+            isSelecting = false;
+          }
+        }
+
+        if (details) details.classList.add('is-ready');
+      }, 120);
+    }
+
+    function showRelativeProduct(offset) {
+      selectProduct(activeIndex + offset, true, true);
+    }
+
+    function groupedProducts() {
+      const groups = new Map();
+      products.forEach((product, index) => {
+        const key = [product.origin, product.lat, product.lng].join('|');
+        if (!groups.has(key)) {
+          groups.set(key, {
+            origin: product.origin,
+            lat: product.lat,
+            lng: product.lng,
+            products: []
+          });
+        }
+        groups.get(key).products.push(Object.assign({ index }, product));
+      });
+      return Array.from(groups.values());
+    }
+
+    function drawStaticFallback() {
+      if (!mapEl || !products.length) return;
+      mapEl.classList.add('is-fallback');
+      mapEl.innerHTML = '<div class="origin-map__fallback-grid" aria-hidden="true"></div><span class="origin-map__fallback-label">Map tiles unavailable - showing origin coordinates</span>';
+
+      products.forEach((product, index) => {
+        const marker = document.createElement('button');
+        marker.type = 'button';
+        marker.className = 'origin-map__fallback-marker';
+        marker.style.left = ((product.lng + 180) / 360 * 100) + '%';
+        marker.style.top = ((90 - product.lat) / 180 * 100) + '%';
+        marker.setAttribute('aria-label', product.title + ' - ' + product.origin);
+        marker.title = product.title + ' - ' + product.origin;
+        marker.addEventListener('click', () => {
+          selectProduct(index, false, false);
+          window.setTimeout(releaseMapFocus, 0);
+        });
+        mapEl.appendChild(marker);
+      });
+    }
+
+    function initLeafletMap() {
+      if (!mapEl || !window.L || !products.length) {
+        drawStaticFallback();
+        return;
+      }
+
+      const map = window.L.map(mapEl, {
+        scrollWheelZoom: false,
+        keyboard: false,
+        zoomControl: false,
+        attributionControl: true,
+        maxZoom: 11,
+        minZoom: 2
+      });
+      originMap = map;
+
+      map.scrollWheelZoom.disable();
+      if (map.keyboard) map.keyboard.disable();
+
+      map.on('popupclose', () => {
+        if (!isSelecting) {
+          restoreMapView();
+        }
+      });
+
+      map.on('click', () => {
+        restoreMapView();
+      });
+
+      window.L.control.zoom({ position: 'bottomright' }).addTo(map);
+      window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 11,
+        minZoom: 2,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      const bounds = [];
+      groupedProducts().forEach(group => {
+        const radius = group.products.length > 1 ? 10 : 8;
+        const marker = window.L.circleMarker([group.lat, group.lng], {
+          baseRadius: radius,
+          radius,
+          color: '#1a3c2a',
+          fillColor: '#c8a45c',
+          fillOpacity: 0.92,
+          weight: 2
+        }).addTo(map);
+
+        const productLinks = group.products.map(product =>
+          '<li><a href="' + escapeHtml(product.url) + '">' + escapeHtml(product.title) + '</a></li>'
+        ).join('');
+
+        marker.customPopupContent = 
+          '<div class="origin-map__popup">' +
+            '<strong>' + escapeHtml(group.origin) + '</strong>' +
+            '<span>' + group.products.length + ' product' + (group.products.length === 1 ? '' : 's') + '</span>' +
+            '<ul>' + productLinks + '</ul>' +
+          '</div>';
+
+        marker.bindTooltip(group.origin, { direction: 'top', offset: [0, -8] });
+        marker.on('click', (e) => {
+          window.L.DomEvent.stopPropagation(e);
+          if (isMapZoomedOn(marker)) {
+            restoreMapView();
+          } else {
+            selectProduct(group.products[0].index, true, true);
+          }
+          window.setTimeout(releaseMapFocus, 0);
+        });
+
+        group.products.forEach(product => markersByIndex.set(product.index, marker));
+        bounds.push([group.lat, group.lng]);
+      });
+
+      if (bounds.length > 1) {
+        map.fitBounds(bounds, { padding: [32, 32], maxZoom: 5 });
+      } else if (bounds.length === 1) {
+        map.setView(bounds[0], 5);
+      }
+
+      // Save initial view for restoration
+      initialView = {
+        center: map.getCenter(),
+        zoom: map.getZoom()
+      };
+
+      selectProduct(0, false, false);
+    }
+
+    function loadLeaflet(callback) {
+      if (window.L) {
+        callback();
+        return;
+      }
+
+      if (!document.querySelector('link[data-origin-leaflet-css]')) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        link.setAttribute('data-origin-leaflet-css', 'true');
+        document.head.appendChild(link);
+      }
+
+      const existingScript = document.querySelector('script[data-origin-leaflet-js]');
+      if (existingScript) {
+        existingScript.addEventListener('load', callback, { once: true });
+        existingScript.addEventListener('error', drawStaticFallback, { once: true });
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      script.defer = true;
+      script.setAttribute('data-origin-leaflet-js', 'true');
+      script.addEventListener('load', callback, { once: true });
+      script.addEventListener('error', drawStaticFallback, { once: true });
+      document.head.appendChild(script);
+    }
+
+    productButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const index = Number(button.dataset.originProduct);
+        const marker = markersByIndex.get(index);
+        if (marker && isMapZoomedOn(marker)) {
+          restoreMapView();
+        } else {
+          selectProduct(index, true, true);
+        }
+      });
+    });
+
+    if (prevButton) {
+      prevButton.addEventListener('click', () => showRelativeProduct(-1));
+    }
+
+    if (nextButton) {
+      nextButton.addEventListener('click', () => showRelativeProduct(1));
+    }
+
+    preservePageWheelScroll();
+
+    if (products.length) {
+      selectProduct(0, false, false);
+      loadLeaflet(initLeafletMap);
+    } else {
+      updateControls(0);
+      drawStaticFallback();
+    }
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Tea Origin Map",
+  "class": "section-origin-map",
+  "settings": [
+    {
+      "type": "text",
+      "id": "label",
+      "label": "Section Label",
+      "default": "Global Origins"
+    },
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Section Title",
+      "default": "Where Our Teas Grow"
+    },
+    {
+      "type": "textarea",
+      "id": "subtitle",
+      "label": "Section Subtitle",
+      "default": "Each marker is generated from real Shopify product data and mapped to its tea origin."
+    }
+  ],
+  "presets": [
+    {
+      "name": "Tea Origin Map"
+    }
+  ]
+}
+{% endschema %}

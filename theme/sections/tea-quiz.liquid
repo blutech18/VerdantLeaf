@@ -1,0 +1,180 @@
+{% comment %}
+  Verdant Leaf — Standout Interactive Feature: Tea Profile Quiz
+  Multi-step quiz that recommends teas based on user preferences
+  Uses scoring logic to match answers to tea categories
+{% endcomment %}
+
+<section class="section section--dark" id="tea-quiz">
+  <div class="container container--narrow">
+    <div class="quiz" id="quiz-container">
+
+      <!-- Start Screen -->
+      <div class="quiz__screen quiz__screen--start active" data-screen="start">
+        <div class="quiz__intro text-center">
+          <div class="quiz__icon">
+            <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+              <path d="M12 28h32v6c0 10-7.2 16-16 16S12 44 12 34v-6z" stroke="#c8a45c" stroke-width="2" fill="#c8a45c" fill-opacity="0.15"/>
+              <path d="M44 32h6a8 8 0 000-16h-6" stroke="#c8a45c" stroke-width="2"/>
+              <path d="M22 20c0-3 2.5-5 2.5-8" stroke="#c8a45c" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+              <path d="M30 18c0-3 2.5-5 2.5-8" stroke="#c8a45c" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+              <path d="M38 20c0-3 2.5-5 2.5-8" stroke="#c8a45c" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+              <line x1="18" y1="54" x2="38" y2="54" stroke="#c8a45c" stroke-width="2" stroke-linecap="round"/>
+              <line x1="28" y1="50" x2="28" y2="54" stroke="#c8a45c" stroke-width="2"/>
+            </svg>
+          </div>
+          <span class="section-label">{{ 'quiz.subtitle' | t }}</span>
+          <h2 class="section-title" style="color: var(--color-cream);">{{ 'quiz.title' | t }}</h2>
+          <p style="color: var(--color-sage-light); max-width: 500px; margin: 0 auto var(--space-2xl);">
+            {{ 'quiz.subtitle' | t }}
+          </p>
+          <button class="btn btn--gold btn--lg quiz__start-btn" id="quiz-start">
+            {{ 'quiz.start' | t }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Question 1: Flavor Preference -->
+      <div class="quiz__screen" data-screen="q1" data-question="1">
+        <div class="quiz__progress">
+          <div class="quiz__progress-bar" style="width: 25%;"></div>
+        </div>
+        <div class="quiz__step-label">Question 1 of 4</div>
+        <h3 class="quiz__question">{{ 'quiz.q1_title' | t }}</h3>
+        <div class="quiz__options" data-question="flavor">
+          <button class="quiz__option" data-value="floral" data-scores='{"green":3,"white":3,"oolong":1,"herbal":2}'>
+            <span class="quiz__option-emoji">🌸</span>
+            <span class="quiz__option-text">{{ 'quiz.q1_o1' | t }}</span>
+          </button>
+          <button class="quiz__option" data-value="earthy" data-scores='{"puerh":3,"oolong":2,"black":1,"green":1}'>
+            <span class="quiz__option-emoji">🌿</span>
+            <span class="quiz__option-text">{{ 'quiz.q1_o2' | t }}</span>
+          </button>
+          <button class="quiz__option" data-value="rich" data-scores='{"black":3,"puerh":2,"oolong":2}'>
+            <span class="quiz__option-emoji">☕</span>
+            <span class="quiz__option-text">{{ 'quiz.q1_o3' | t }}</span>
+          </button>
+          <button class="quiz__option" data-value="fruity" data-scores='{"herbal":3,"white":2,"green":1,"oolong":1}'>
+            <span class="quiz__option-emoji">🍑</span>
+            <span class="quiz__option-text">{{ 'quiz.q1_o4' | t }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Question 2: Caffeine Level -->
+      <div class="quiz__screen" data-screen="q2" data-question="2">
+        <div class="quiz__progress">
+          <div class="quiz__progress-bar" style="width: 50%;"></div>
+        </div>
+        <div class="quiz__step-label">Question 2 of 4</div>
+        <h3 class="quiz__question">{{ 'quiz.q2_title' | t }}</h3>
+        <div class="quiz__options" data-question="caffeine">
+          <button class="quiz__option" data-value="none" data-scores='{"herbal":4}'>
+            <span class="quiz__option-emoji">😌</span>
+            <span class="quiz__option-text">{{ 'quiz.q2_o1' | t }}</span>
+          </button>
+          <button class="quiz__option" data-value="low" data-scores='{"white":3,"green":2,"herbal":1}'>
+            <span class="quiz__option-emoji">🍃</span>
+            <span class="quiz__option-text">{{ 'quiz.q2_o2' | t }}</span>
+          </button>
+          <button class="quiz__option" data-value="moderate" data-scores='{"green":2,"oolong":3,"white":1}'>
+            <span class="quiz__option-emoji">⚡</span>
+            <span class="quiz__option-text">{{ 'quiz.q2_o3' | t }}</span>
+          </button>
+          <button class="quiz__option" data-value="high" data-scores='{"black":3,"puerh":2,"oolong":1}'>
+            <span class="quiz__option-emoji">🚀</span>
+            <span class="quiz__option-text">{{ 'quiz.q2_o4' | t }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Question 3: Time of Day -->
+      <div class="quiz__screen" data-screen="q3" data-question="3">
+        <div class="quiz__progress">
+          <div class="quiz__progress-bar" style="width: 75%;"></div>
+        </div>
+        <div class="quiz__step-label">Question 3 of 4</div>
+        <h3 class="quiz__question">{{ 'quiz.q3_title' | t }}</h3>
+        <div class="quiz__options" data-question="time">
+          <button class="quiz__option" data-value="morning" data-scores='{"black":3,"puerh":2,"oolong":1}'>
+            <span class="quiz__option-emoji">🌅</span>
+            <span class="quiz__option-text">{{ 'quiz.q3_o1' | t }}</span>
+          </button>
+          <button class="quiz__option" data-value="afternoon" data-scores='{"oolong":3,"green":2,"white":1}'>
+            <span class="quiz__option-emoji">☀️</span>
+            <span class="quiz__option-text">{{ 'quiz.q3_o2' | t }}</span>
+          </button>
+          <button class="quiz__option" data-value="evening" data-scores='{"herbal":4,"white":1}'>
+            <span class="quiz__option-emoji">🌙</span>
+            <span class="quiz__option-text">{{ 'quiz.q3_o3' | t }}</span>
+          </button>
+          <button class="quiz__option" data-value="allday" data-scores='{"green":2,"oolong":2,"white":1,"herbal":1}'>
+            <span class="quiz__option-emoji">🔄</span>
+            <span class="quiz__option-text">{{ 'quiz.q3_o4' | t }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Question 4: Brewing Style -->
+      <div class="quiz__screen" data-screen="q4" data-question="4">
+        <div class="quiz__progress">
+          <div class="quiz__progress-bar" style="width: 100%;"></div>
+        </div>
+        <div class="quiz__step-label">Question 4 of 4</div>
+        <h3 class="quiz__question">{{ 'quiz.q4_title' | t }}</h3>
+        <div class="quiz__options" data-question="style">
+          <button class="quiz__option" data-value="quick" data-scores='{"black":2,"herbal":2,"green":1}'>
+            <span class="quiz__option-emoji">⏱️</span>
+            <span class="quiz__option-text">{{ 'quiz.q4_o1' | t }}</span>
+          </button>
+          <button class="quiz__option" data-value="gongfu" data-scores='{"oolong":3,"puerh":3,"green":1}'>
+            <span class="quiz__option-emoji">🏺</span>
+            <span class="quiz__option-text">{{ 'quiz.q4_o2' | t }}</span>
+          </button>
+          <button class="quiz__option" data-value="coldbrew" data-scores='{"green":3,"white":2,"herbal":1}'>
+            <span class="quiz__option-emoji">❄️</span>
+            <span class="quiz__option-text">{{ 'quiz.q4_o3' | t }}</span>
+          </button>
+          <button class="quiz__option" data-value="beginner" data-scores='{"green":2,"black":2,"herbal":2}'>
+            <span class="quiz__option-emoji">🌱</span>
+            <span class="quiz__option-text">{{ 'quiz.q4_o4' | t }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Results Screen -->
+      <div class="quiz__screen" data-screen="results">
+        <div class="text-center">
+          <span class="section-label">{{ 'quiz.result_title' | t }}</span>
+          <h2 class="quiz__result-heading" id="quiz-result-title">Your Tea Match</h2>
+          <p class="quiz__result-subtitle" id="quiz-result-desc">Loading your results...</p>
+        </div>
+
+        <div class="quiz__results-grid" id="quiz-results-grid">
+          <!-- Results dynamically injected here -->
+        </div>
+
+        <div class="text-center mt-2xl">
+          <button class="btn btn--ghost quiz__restart-btn" id="quiz-restart">
+            ← {{ 'quiz.restart' | t }}
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<script src="{{ 'quiz.js' | asset_url }}" defer></script>
+
+{% schema %}
+{
+  "name": "Tea Quiz",
+  "class": "section-tea-quiz",
+  "settings": [],
+  "presets": [
+    {
+      "name": "Tea Quiz"
+    }
+  ]
+}
+{% endschema %}

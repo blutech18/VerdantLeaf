@@ -1,0 +1,193 @@
+{% comment %}
+  Verdant Leaf — Custom Section 1: Hero with Parallax Effect
+  Full-viewport hero with layered background, overlay gradient, and animated content
+{% endcomment %}
+
+<section class="hero" id="hero-section">
+  <div class="hero__bg">
+    {% if section.settings.hero_image != blank %}
+      <img
+        src="{{ section.settings.hero_image | image_url: width: 1920 }}"
+        alt="{{ section.settings.hero_image.alt | default: 'Tea plantation landscape' }}"
+        class="hero__bg-image"
+        loading="eager"
+        fetchpriority="high"
+        width="1920"
+        height="1080"
+      >
+    {% else %}
+      {%- comment -%} Fallback: CSS gradient resembling tea field {%- endcomment -%}
+      <div class="hero__bg-image" style="
+        width: 100%;
+        height: 120%;
+        background: linear-gradient(
+          180deg,
+          #1a3c2a 0%,
+          #2a5c40 30%,
+          #4a7c5c 50%,
+          #6b8f71 70%,
+          #8fb396 85%,
+          #c8dcc0 100%
+        );
+      "></div>
+    {% endif %}
+    <div class="hero__overlay"></div>
+  </div>
+
+  <div class="container hero__container">
+    <div class="hero__grid">
+      <!-- Left Column: Content -->
+      <div class="hero__content">
+        <span class="hero__label">{{ section.settings.label | default: 'Artisan Tea Collection' }}</span>
+        <h1 class="hero__title">
+          {{ section.settings.title | default: 'From Leaf to <em>Cup</em>' }}
+        </h1>
+        <p class="hero__subtitle">
+          {{ section.settings.subtitle | default: "Discover single-origin teas sourced directly from small farms across the world's finest growing regions." }}
+        </p>
+        <div class="hero__actions">
+          {% if section.settings.cta_primary_text != blank %}
+            <a href="{{ section.settings.cta_primary_url | default: '/collections/all' }}" class="btn btn--gold btn--lg">
+              {{ section.settings.cta_primary_text }}
+            </a>
+          {% endif %}
+          {% if section.settings.cta_secondary_text != blank %}
+            <a href="{{ section.settings.cta_secondary_url | default: '#tea-quiz' }}" class="btn btn--ghost btn--lg">
+              {{ section.settings.cta_secondary_text }}
+            </a>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Right Column: Animated Product Slideshow -->
+      <div class="hero__products-column">
+        <div class="hero__products-slideshow">
+          {% assign catalog_collection = collections.all %}
+          {% assign slide_count = 0 %}
+          {% if catalog_collection != blank and catalog_collection.products.size > 0 %}
+            {% for product in catalog_collection.products limit: 6 %}
+              {% if product.featured_image != blank %}
+                <div class="hero__product-slide {% if slide_count == 0 %}is-active{% endif %}" data-hero-product-slide>
+                  <a href="{{ product.url }}">
+                    <img
+                      src="{{ product.featured_image | image_url: width: 600 }}"
+                      alt="{{ product.title | escape }}"
+                      class="hero__product-image"
+                      loading="lazy"
+                      width="350"
+                      height="350"
+                    >
+                  </a>
+                </div>
+                {% assign slide_count = slide_count | plus: 1 %}
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero__scroll-hint" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <path d="M12 5v14M5 12l7 7 7-7"/>
+    </svg>
+  </div>
+</section>
+
+<script>
+  (function() {
+    const slides = document.querySelectorAll('[data-hero-product-slide]');
+    if (slides.length <= 1) return;
+
+    let currentIndex = 0;
+
+    function updateSlides(exitingIndex) {
+      const len = slides.length;
+      slides.forEach((slide, idx) => {
+        slide.classList.remove('is-active', 'is-next', 'is-next-2', 'is-exiting');
+        
+        if (idx === exitingIndex) {
+          slide.classList.add('is-exiting');
+        } else if (idx === currentIndex) {
+          slide.classList.add('is-active');
+        } else if (idx === (currentIndex + 1) % len) {
+          slide.classList.add('is-next');
+        } else if (idx === (currentIndex + 2) % len) {
+          slide.classList.add('is-next-2');
+        }
+      });
+    }
+
+    function nextSlide() {
+      const exitingIndex = currentIndex;
+      currentIndex = (currentIndex + 1) % slides.length;
+      updateSlides(exitingIndex);
+    }
+
+    // Initialize without an exiting slide
+    updateSlides(-1);
+
+    // Seamless auto-transition cycle every 4 seconds
+    setInterval(nextSlide, 4000);
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Hero Parallax",
+  "class": "section-hero",
+  "settings": [
+    {
+      "type": "image_picker",
+      "id": "hero_image",
+      "label": "Background Image"
+    },
+    {
+      "type": "text",
+      "id": "label",
+      "label": "Top Label",
+      "default": "Artisan Tea Collection"
+    },
+    {
+      "type": "inline_richtext",
+      "id": "title",
+      "label": "Heading",
+      "default": "From Leaf to <em>Cup</em>"
+    },
+    {
+      "type": "textarea",
+      "id": "subtitle",
+      "label": "Subtitle",
+      "default": "Discover single-origin teas sourced directly from small farms across the world's finest growing regions."
+    },
+    {
+      "type": "text",
+      "id": "cta_primary_text",
+      "label": "Primary Button Text",
+      "default": "Shop Collection"
+    },
+    {
+      "type": "url",
+      "id": "cta_primary_url",
+      "label": "Primary Button URL"
+    },
+    {
+      "type": "text",
+      "id": "cta_secondary_text",
+      "label": "Secondary Button Text",
+      "default": "Take the Tea Quiz"
+    },
+    {
+      "type": "url",
+      "id": "cta_secondary_url",
+      "label": "Secondary Button URL"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Hero Parallax"
+    }
+  ]
+}
+{% endschema %}

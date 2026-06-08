@@ -1,0 +1,226 @@
+{% comment %}
+  Verdant Leaf — Product Page Template
+  Full product detail page with gallery, meta info, add to cart, and recommendations
+{% endcomment %}
+
+<div class="product-page">
+  <div class="container">
+    <div class="product-page__grid">
+      <!-- Gallery Column -->
+      <div class="product-page__gallery animate-on-scroll">
+        {% if product.featured_image %}
+          <img
+            src="{{ product.featured_image | image_url: width: 900 }}"
+            alt="{{ product.featured_image.alt | default: product.title }}"
+            class="product-page__main-image"
+            id="product-main-image"
+            loading="eager"
+            width="900"
+            height="900"
+          >
+          {% if product.images.size > 1 %}
+            <div class="product-page__thumbnails">
+              {% for image in product.images %}
+                <img
+                  src="{{ image | image_url: width: 150 }}"
+                  alt="{{ image.alt | default: product.title }}"
+                  class="product-page__thumbnail {% if forloop.first %}active{% endif %}"
+                  data-full-src="{{ image | image_url: width: 900 }}"
+                  loading="lazy"
+                  width="150"
+                  height="150"
+                >
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% else %}
+          {%- comment -%} Placeholder for demo {%- endcomment -%}
+          <div class="product-page__main-image" style="
+            background: linear-gradient(135deg, #2a5c40 0%, #1a3c2a 100%);
+            display: flex; align-items: center; justify-content: center;
+          ">
+            <div style="text-align: center; color: rgba(250,246,240,0.5);">
+              <svg width="80" height="80" viewBox="0 0 48 48" fill="none">
+                <path d="M8 20h24v4c0 8-5.4 12-12 12S8 32 8 24v-4z" stroke="currentColor" stroke-width="1.5" fill="currentColor" fill-opacity="0.15"/>
+                <path d="M32 22h4a5 5 0 000-10h-4" stroke="currentColor" stroke-width="1.5"/>
+                <path d="M16 14c0-2 1.5-3 1.5-5" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+                <path d="M22 12c0-2 1.5-3 1.5-5" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+              </svg>
+              <div style="font-size: 12px; margin-top: 8px; text-transform: uppercase; letter-spacing: 0.1em;">Product Image</div>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Product Info Column -->
+      <div class="product-page__info animate-on-scroll stagger-1">
+        {% if product.type != blank %}
+          <div class="product-page__category">
+            {{ product.vendor | default: 'Japan' }} · {{ product.type | default: 'Green Tea' }}
+          </div>
+        {% else %}
+          <div class="product-page__category">Japan · Green Tea</div>
+        {% endif %}
+
+        <h1 class="product-page__title">{{ product.title | default: 'Uji Sencha Reserve' }}</h1>
+
+        <div class="product-page__price">
+          {% if product %}
+            {{ product.price | money }}
+          {% else %}
+            $24.00
+          {% endif %}
+          {% if product.compare_at_price > product.price %}
+            <span style="text-decoration: line-through; color: var(--color-text-muted); font-size: var(--text-md); font-weight: 400; margin-left: var(--space-sm);">
+              {{ product.compare_at_price | money }}
+            </span>
+          {% endif %}
+        </div>
+
+        <div class="product-page__description">
+          {% if product.description != blank %}
+            {{ product.description }}
+          {% else %}
+            <p>
+              A vibrant, umami-rich green tea sourced from the historic Uji region of Kyoto, Japan.
+              This first-flush sencha is shade-grown for 20 days before harvest, creating a deep emerald
+              leaf with an extraordinarily sweet, layered flavor profile.
+            </p>
+            <p>
+              Notes of fresh grass, seaweed, and a lingering sweet finish make this our most popular
+              everyday green tea. Best enjoyed without milk.
+            </p>
+          {% endif %}
+        </div>
+
+        <!-- Product Meta Details -->
+        <div class="product-page__meta">
+          <div class="product-page__meta-item">
+            <span class="product-page__meta-label">{{ 'product.origin' | t }}</span>
+            <span class="product-page__meta-value">{{ product.metafields.custom.origin | default: 'Uji, Kyoto, Japan' }}</span>
+          </div>
+          <div class="product-page__meta-item">
+            <span class="product-page__meta-label">{{ 'product.type' | t }}</span>
+            <span class="product-page__meta-value">{{ product.type | default: 'Green Tea (Sencha)' }}</span>
+          </div>
+          <div class="product-page__meta-item">
+            <span class="product-page__meta-label">{{ 'product.caffeine' | t }}</span>
+            <span class="product-page__meta-value">{{ product.metafields.custom.caffeine | default: 'Moderate' }}</span>
+          </div>
+          <div class="product-page__meta-item">
+            <span class="product-page__meta-label">{{ 'product.steep_time' | t }}</span>
+            <span class="product-page__meta-value">{{ product.metafields.custom.steep_time | default: '1-2 min' }}</span>
+          </div>
+          <div class="product-page__meta-item">
+            <span class="product-page__meta-label">{{ 'product.temperature' | t }}</span>
+            <span class="product-page__meta-value">{{ product.metafields.custom.temperature | default: '75°C / 167°F' }}</span>
+          </div>
+          <div class="product-page__meta-item">
+            <span class="product-page__meta-label">{{ 'product.weight' | t }}</span>
+            <span class="product-page__meta-value">{{ product.variants.first.title | default: '50g' }}</span>
+          </div>
+        </div>
+
+        <!-- Add to Cart Form -->
+        {% if product %}
+          <form action="{{ routes.cart_add_url }}" method="post" class="product-page__add-form" id="product-form">
+            <input type="hidden" name="id" value="{{ product.selected_or_first_available_variant.id }}">
+            <div class="quantity-selector">
+              <button type="button" class="qty-minus" aria-label="Decrease quantity">−</button>
+              <input type="number" name="quantity" value="1" min="1" max="99" aria-label="Quantity" id="product-quantity">
+              <button type="button" class="qty-plus" aria-label="Increase quantity">+</button>
+            </div>
+            {% if product.available %}
+              <button type="submit" class="btn btn--primary btn--lg" style="flex: 1;" id="add-to-cart">
+                {{ 'product.add_to_cart' | t }}
+              </button>
+            {% else %}
+              <button type="button" class="btn btn--primary btn--lg" style="flex: 1; opacity: 0.5;" disabled>
+                {{ 'product.sold_out' | t }}
+              </button>
+            {% endif %}
+          </form>
+        {% else %}
+          <div class="product-page__add-form">
+            <div class="quantity-selector">
+              <button type="button" class="qty-minus" aria-label="Decrease quantity">−</button>
+              <input type="number" value="1" min="1" max="99" aria-label="Quantity" id="product-quantity">
+              <button type="button" class="qty-plus" aria-label="Increase quantity">+</button>
+            </div>
+            <button type="button" class="btn btn--primary btn--lg" style="flex: 1;" id="add-to-cart">
+              {{ 'product.add_to_cart' | t }}
+            </button>
+          </div>
+        {% endif %}
+
+        <!-- Trust badges -->
+        <div style="display: flex; gap: var(--space-xl); margin-top: var(--space-lg); justify-content: center;">
+          <div style="text-align: center; color: var(--color-text-muted); font-size: var(--text-xs);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 4px;">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            Freshness Guaranteed
+          </div>
+          <div style="text-align: center; color: var(--color-text-muted); font-size: var(--text-xs);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 4px;">
+              <rect x="1" y="3" width="15" height="13" rx="2"/>
+              <path d="M16 8h4l3 3v5a2 2 0 01-2 2h-1"/>
+              <circle cx="5.5" cy="18.5" r="2.5"/>
+              <circle cx="18.5" cy="18.5" r="2.5"/>
+            </svg>
+            Free Shipping $50+
+          </div>
+          <div style="text-align: center; color: var(--color-text-muted); font-size: var(--text-xs);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 4px;">
+              <path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66C7.72 17.12 9.3 13 17 11V14l5-6-5-6v6z"/>
+            </svg>
+            Easy Returns
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quantity Selector JS -->
+<script>
+  (function() {
+    const qtyInput = document.getElementById('product-quantity');
+    if (!qtyInput) return;
+
+    const minus = document.querySelector('.qty-minus');
+    const plus = document.querySelector('.qty-plus');
+
+    if (minus) {
+      minus.addEventListener('click', () => {
+        const val = parseInt(qtyInput.value) || 1;
+        if (val > 1) qtyInput.value = val - 1;
+      });
+    }
+
+    if (plus) {
+      plus.addEventListener('click', () => {
+        const val = parseInt(qtyInput.value) || 1;
+        if (val < 99) qtyInput.value = val + 1;
+      });
+    }
+
+    // Thumbnail gallery
+    document.querySelectorAll('.product-page__thumbnail').forEach(thumb => {
+      thumb.addEventListener('click', function() {
+        document.querySelectorAll('.product-page__thumbnail').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        const mainImg = document.getElementById('product-main-image');
+        if (mainImg && this.dataset.fullSrc) {
+          mainImg.src = this.dataset.fullSrc;
+        }
+      });
+    });
+  })();
+</script>
+
+<style>
+  .product-page {
+    padding-bottom: var(--space-4xl);
+  }
+</style>

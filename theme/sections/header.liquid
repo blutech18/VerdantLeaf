@@ -1,0 +1,139 @@
+{% comment %}
+  Verdant Leaf — Header Section
+  Fixed navigation with logo, menu links, and cart icon
+{% endcomment %}
+
+<header class="site-header" role="banner">
+  <div class="header__inner">
+    <!-- Logo -->
+    <a href="{{ routes.root_url }}" class="header__logo" aria-label="{{ shop.name }}">
+      <img class="header__logo-icon" src="{{ 'verdant-leaf-logo-green.png' | asset_url }}" alt="Verdant Leaf Logo" width="32" height="32" loading="eager" style="object-fit: contain;">
+      <span>Verdant Leaf</span>
+    </a>
+
+    <!-- Navigation -->
+    <nav class="header__nav" role="navigation" aria-label="Main navigation">
+      <a href="{{ routes.root_url }}#hero-section" class="header__nav-link">
+        {{ 'header.menu_home' | t }}
+      </a>
+      <a href="{{ routes.root_url }}#featured-collection" class="header__nav-link">
+        {{ 'header.menu_shop' | t }}
+      </a>
+      <a href="{{ routes.root_url }}#origin-map" class="header__nav-link">
+        {{ 'header.menu_about' | t }}
+      </a>
+      <a href="{{ routes.root_url }}#tea-quiz" class="header__nav-link" id="nav-quiz-link">
+        {{ 'header.menu_quiz' | t }}
+      </a>
+      <div class="header__nav-indicator"></div>
+    </nav>
+
+    <!-- Actions -->
+    <div class="header__actions">
+      <a href="{{ routes.cart_url }}" class="header__cart-btn" aria-label="{{ 'header.cart' | t }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <path d="M16 10a4 4 0 01-8 0"/>
+        </svg>
+        {% if cart.item_count > 0 %}
+          <span class="header__cart-count" aria-label="{{ cart.item_count }} items">
+            {{ cart.item_count }}
+          </span>
+        {% endif %}
+      </a>
+
+      <!-- Mobile menu toggle -->
+      <button class="header__menu-toggle" aria-label="Open menu" aria-expanded="false">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+{% schema %}
+{
+  "name": "Header",
+  "class": "section-header"
+}
+{% endschema %}
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const navLinks = document.querySelectorAll('.header__nav-link');
+  
+  // Smooth scroll for internal links
+  navLinks.forEach(link => {
+    link.addEventListener('click', function(e) {
+      const url = this.getAttribute('href');
+      if (url.includes('#')) {
+        const targetId = url.split('#')[1];
+        const targetSection = document.getElementById(targetId);
+        
+        if (targetSection) {
+          e.preventDefault();
+          const headerOffset = 85; 
+          const elementPosition = targetSection.getBoundingClientRect().top;
+          const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+  
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: "smooth"
+          });
+          
+          history.pushState(null, null, '#' + targetId);
+        }
+      }
+    });
+  });
+
+  // Scrollspy Observer to set active class
+  const sections = document.querySelectorAll('section[id]');
+  const observerOptions = {
+    root: null,
+    rootMargin: '-30% 0px -60% 0px',
+    threshold: 0
+  };
+
+  const navIndicator = document.querySelector('.header__nav-indicator');
+  const navContainer = document.querySelector('.header__nav');
+
+  function updateIndicator(targetLink) {
+    if (!targetLink || !navIndicator) return;
+    const linkRect = targetLink.getBoundingClientRect();
+    const navRect = navContainer.getBoundingClientRect();
+    const left = linkRect.left - navRect.left;
+    const width = linkRect.width;
+    navIndicator.style.left = `${left}px`;
+    navIndicator.style.width = `${width}px`;
+  }
+
+  function moveIndicatorToActive() {
+    const activeLink = document.querySelector('.header__nav-link.active');
+    if (activeLink) updateIndicator(activeLink);
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navLinks.forEach(link => {
+          link.classList.remove('active');
+          if (link.getAttribute('href').includes('#' + entry.target.id)) {
+            link.classList.add('active');
+          }
+        });
+        moveIndicatorToActive();
+      }
+    });
+  }, observerOptions);
+
+  sections.forEach(section => {
+    observer.observe(section);
+  });
+
+  setTimeout(moveIndicatorToActive, 100);
+  window.addEventListener('resize', moveIndicatorToActive);
+});
+</script>

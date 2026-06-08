@@ -1,0 +1,99 @@
+{% comment %}
+  Verdant Leaf — Custom Section 3: Brewing Guide Cards
+  Animated step-by-step brewing instructions with icons
+{% endcomment %}
+
+<section class="section section--alt" id="brewing-guide">
+  <div class="container">
+    <div class="text-center mb-xl animate-on-scroll">
+      <span class="section-label">{{ 'brewing_guide.label' | t }}</span>
+      <h2 class="section-title">{{ 'brewing_guide.title' | t }}</h2>
+      <p class="section-subtitle centered">{{ 'brewing_guide.subtitle' | t }}</p>
+    </div>
+
+    <div class="brewing-guide__cards">
+      <!-- Step 1: Measure -->
+      <div class="brewing-card animate-on-scroll stagger-1">
+        <div class="brewing-card__step">1</div>
+        <div class="brewing-card__icon">
+          <svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M28 8v40M20 16h16M22 24h12M24 32h8M26 40h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M18 8h20v4a2 2 0 01-2 2H20a2 2 0 01-2-2V8z" stroke="currentColor" stroke-width="2" fill="currentColor" fill-opacity="0.15"/>
+            <circle cx="28" cy="48" r="3" fill="currentColor" opacity="0.3"/>
+          </svg>
+        </div>
+        <h4 class="brewing-card__title">{{ 'brewing_guide.step1_title' | t }}</h4>
+        <p class="brewing-card__desc">{{ 'brewing_guide.step1_desc' | t }}</p>
+      </div>
+
+      <!-- Step 2: Heat -->
+      <div class="brewing-card animate-on-scroll stagger-2">
+        <div class="brewing-card__step">2</div>
+        <div class="brewing-card__icon">
+          <svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M14 40h28M16 40V20a12 12 0 0124 0v20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M22 30c0-2 2-4 2-6s-2-4-2-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+            <path d="M28 30c0-2 2-4 2-6s-2-4-2-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+            <path d="M34 30c0-2 2-4 2-6s-2-4-2-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.6"/>
+            <rect x="12" y="40" width="32" height="6" rx="2" fill="currentColor" opacity="0.15" stroke="currentColor" stroke-width="2"/>
+          </svg>
+        </div>
+        <h4 class="brewing-card__title">{{ 'brewing_guide.step2_title' | t }}</h4>
+        <p class="brewing-card__desc">{{ 'brewing_guide.step2_desc' | t }}</p>
+      </div>
+
+      <!-- Step 3: Steep -->
+      <div class="brewing-card animate-on-scroll stagger-3">
+        <div class="brewing-card__step">3</div>
+        <div class="brewing-card__icon">
+          <svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="28" cy="28" r="18" stroke="currentColor" stroke-width="2"/>
+            <circle cx="28" cy="28" r="14" stroke="currentColor" stroke-width="1" opacity="0.3"/>
+            <line x1="28" y1="14" x2="28" y2="28" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <line x1="28" y1="28" x2="36" y2="34" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="28" cy="28" r="2" fill="currentColor"/>
+            <!-- Hour marks -->
+            <circle cx="28" cy="12" r="1.5" fill="currentColor"/>
+            <circle cx="44" cy="28" r="1.5" fill="currentColor"/>
+            <circle cx="28" cy="44" r="1.5" fill="currentColor"/>
+            <circle cx="12" cy="28" r="1.5" fill="currentColor"/>
+          </svg>
+        </div>
+        <h4 class="brewing-card__title">{{ 'brewing_guide.step3_title' | t }}</h4>
+        <p class="brewing-card__desc">{{ 'brewing_guide.step3_desc' | t }}</p>
+      </div>
+
+      <!-- Step 4: Enjoy -->
+      <div class="brewing-card animate-on-scroll stagger-4">
+        <div class="brewing-card__step">4</div>
+        <div class="brewing-card__icon">
+          <svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10 22h28v4c0 8-6.268 14-14 14S10 34 10 26v-4z" stroke="currentColor" stroke-width="2" fill="currentColor" fill-opacity="0.1"/>
+            <path d="M38 26h4a6 6 0 000-12h-4" stroke="currentColor" stroke-width="2"/>
+            <line x1="14" y1="44" x2="34" y2="44" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <line x1="24" y1="40" x2="24" y2="44" stroke="currentColor" stroke-width="2"/>
+            <!-- Steam -->
+            <path d="M18 16c0-3 2-4 2-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+            <path d="M24 14c0-3 2-4 2-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+            <path d="M30 16c0-3 2-4 2-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+          </svg>
+        </div>
+        <h4 class="brewing-card__title">{{ 'brewing_guide.step4_title' | t }}</h4>
+        <p class="brewing-card__desc">{{ 'brewing_guide.step4_desc' | t }}</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Brewing Guide",
+  "class": "section-brewing-guide",
+  "settings": [],
+  "presets": [
+    {
+      "name": "Brewing Guide"
+    }
+  ]
+}
+{% endschema %}

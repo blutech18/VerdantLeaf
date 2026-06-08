@@ -1,0 +1,92 @@
+{% comment %}
+  Verdant Leaf — Collection Page Template
+  Displays all products in a collection with filtering
+{% endcomment %}
+
+<div class="collection-page">
+  <div class="container">
+    <!-- Collection Header -->
+    <div class="collection-page__header animate-on-scroll">
+      <span class="section-label">{{ collection.title | default: 'Our Collection' }}</span>
+      <h1 class="section-title">{{ collection.title | default: 'Our Collection' }}</h1>
+      <p class="section-subtitle centered">
+        {{ collection.description | default: 'Explore our curated selection of artisan loose-leaf teas from around the world.' }}
+      </p>
+    </div>
+
+    <!-- Filters -->
+    <div class="collection-page__filters animate-on-scroll">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="green">Green Tea</button>
+      <button class="filter-btn" data-filter="black">Black Tea</button>
+      <button class="filter-btn" data-filter="oolong">Oolong</button>
+      <button class="filter-btn" data-filter="white">White Tea</button>
+      <button class="filter-btn" data-filter="puerh">Pu-erh</button>
+      <button class="filter-btn" data-filter="herbal">Herbal</button>
+      <button class="filter-btn" data-filter="matcha">Matcha</button>
+    </div>
+
+    <!-- Product Grid -->
+    <div class="collection-page__grid" id="collection-grid">
+      {% assign tea_product_count = 0 %}
+      {% if collection.products.size > 0 %}
+        {% for product in collection.products %}
+          {% assign product_tags = product.tags | join: ' ' %}
+          {% assign product_lookup = product.title | append: ' ' | append: product.type | append: ' ' | append: product.vendor | append: ' ' | append: product_tags | downcase %}
+          {% if product_lookup contains 'tea' or product_lookup contains 'matcha' or product_lookup contains 'sencha' or product_lookup contains 'oolong' or product_lookup contains 'puerh' or product_lookup contains 'pu-erh' or product_lookup contains 'jasmine' or product_lookup contains 'chamomile' or product_lookup contains 'darjeeling' %}
+            {% assign tea_product_count = tea_product_count | plus: 1 %}
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+
+      {% assign rendered_products = 0 %}
+      {% if tea_product_count > 0 %}
+        {% for product in collection.products %}
+          {% assign product_tags = product.tags | join: ' ' %}
+          {% assign product_lookup = product.title | append: ' ' | append: product.type | append: ' ' | append: product.vendor | append: ' ' | append: product_tags | downcase %}
+          {% if product_lookup contains 'tea' or product_lookup contains 'matcha' or product_lookup contains 'sencha' or product_lookup contains 'oolong' or product_lookup contains 'puerh' or product_lookup contains 'pu-erh' or product_lookup contains 'jasmine' or product_lookup contains 'chamomile' or product_lookup contains 'darjeeling' %}
+            {% render 'product-card', product: product %}
+            {% assign rendered_products = rendered_products | plus: 1 %}
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+
+      {% if rendered_products == 0 %}
+        <p class="collection-page__empty">No tea products are available in this collection yet.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+  // Client-side filtering (demo)
+  (function() {
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    const products = document.querySelectorAll('.collection-page__grid .product-card');
+
+    filterBtns.forEach(btn => {
+      btn.addEventListener('click', function() {
+        filterBtns.forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+
+        const filter = this.dataset.filter;
+
+        products.forEach(card => {
+          const type = card.dataset.type || '';
+          if (filter === 'all' || type.includes(filter)) {
+            card.style.display = '';
+            card.style.animation = 'fadeInUp 0.4s ease both';
+          } else {
+            card.style.display = 'none';
+          }
+        });
+      });
+    });
+  })();
+</script>
+
+<style>
+  .collection-page {
+    padding-bottom: var(--space-4xl);
+  }
+</style>

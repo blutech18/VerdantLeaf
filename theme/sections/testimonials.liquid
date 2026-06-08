@@ -1,0 +1,75 @@
+{% comment %}
+  Verdant Leaf — Testimonials Section
+{% endcomment %}
+
+<section class="section" id="testimonials">
+  <div class="container">
+    <div class="text-center mb-xl animate-on-scroll">
+      <span class="section-label">{{ 'testimonials.label' | t }}</span>
+      <h2 class="section-title">{{ 'testimonials.title' | t }}</h2>
+    </div>
+
+    <div class="testimonials__grid">
+      <div class="testimonial-card animate-on-scroll stagger-1">
+        <div class="testimonial-card__stars">★★★★★</div>
+        <div class="testimonial-card__quote">"</div>
+        <p class="testimonial-card__text">
+          The Ali Shan Oolong completely changed how I think about tea. The floral notes are
+          incredible — it's like drinking a mountain meadow. I've become a monthly subscriber.
+        </p>
+        <div class="testimonial-card__author">
+          <div class="testimonial-card__avatar">S</div>
+          <div>
+            <div class="testimonial-card__name">Sarah Chen</div>
+            <div class="testimonial-card__role">Tea Enthusiast, Portland</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial-card animate-on-scroll stagger-2">
+        <div class="testimonial-card__stars">★★★★★</div>
+        <div class="testimonial-card__quote">"</div>
+        <p class="testimonial-card__text">
+          I took the tea quiz as a complete beginner and was matched with the Sencha Reserve.
+          Now I brew it every morning. The quality is noticeably superior to anything I've tried.
+        </p>
+        <div class="testimonial-card__author">
+          <div class="testimonial-card__avatar">M</div>
+          <div>
+            <div class="testimonial-card__name">Marcus Williams</div>
+            <div class="testimonial-card__role">Coffee Convert, Brooklyn</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial-card animate-on-scroll stagger-3">
+        <div class="testimonial-card__stars">★★★★★</div>
+        <div class="testimonial-card__quote">"</div>
+        <p class="testimonial-card__text">
+          What sets Verdant Leaf apart is the freshness. You can tell these teas were harvested
+          recently — the aroma when you open the packet is simply breathtaking. Worth every penny.
+        </p>
+        <div class="testimonial-card__author">
+          <div class="testimonial-card__avatar">A</div>
+          <div>
+            <div class="testimonial-card__name">Aiko Tanaka</div>
+            <div class="testimonial-card__role">Tea Ceremony Practitioner, London</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Testimonials",
+  "class": "section-testimonials",
+  "settings": [],
+  "presets": [
+    {
+      "name": "Testimonials"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,138 @@
+{% comment %}
+  Verdant Leaf — Cart Page Template
+  Full cart with line items, quantity controls, and order summary
+{% endcomment %}
+
+<div class="cart-page">
+  <div class="container">
+    <h1 class="section-title animate-on-scroll" style="margin-bottom: var(--space-2xl);">{{ 'cart.title' | t }}</h1>
+
+    {% if cart.item_count > 0 %}
+      <div class="cart-page__grid">
+        <!-- Cart Items -->
+        <div class="cart-items animate-on-scroll">
+          {% for item in cart.items %}
+            <div class="cart-item" data-line="{{ forloop.index }}">
+              {% if item.image %}
+                <img
+                  src="{{ item.image | image_url: width: 200 }}"
+                  alt="{{ item.title | escape }}"
+                  class="cart-item__image"
+                  loading="lazy"
+                  width="200"
+                  height="200"
+                >
+              {% else %}
+                <div class="cart-item__image" style="background: var(--color-linen); display: flex; align-items: center; justify-content: center;">
+                  <svg width="32" height="32" viewBox="0 0 48 48" fill="none" stroke="var(--color-border)" stroke-width="1.5">
+                    <path d="M8 20h24v4c0 8-5.4 12-12 12S8 32 8 24v-4z"/>
+                  </svg>
+                </div>
+              {% endif %}
+
+              <div class="cart-item__details">
+                <h3 class="cart-item__title">
+                  <a href="{{ item.url }}">{{ item.product.title }}</a>
+                </h3>
+                {% if item.variant.title != 'Default Title' %}
+                  <div class="cart-item__variant">{{ item.variant.title }}</div>
+                {% endif %}
+                <div class="cart-item__price">{{ item.line_price | money }}</div>
+
+                <div style="display: flex; align-items: center; gap: var(--space-md); margin-top: var(--space-sm);">
+                  <div class="quantity-selector">
+                    <button type="button" onclick="updateCartQuantity({{ forloop.index }}, {{ item.quantity | minus: 1 }})" aria-label="Decrease">−</button>
+                    <input type="number" value="{{ item.quantity }}" min="0" max="99" readonly aria-label="Quantity">
+                    <button type="button" onclick="updateCartQuantity({{ forloop.index }}, {{ item.quantity | plus: 1 }})" aria-label="Increase">+</button>
+                  </div>
+                  <button class="cart-item__remove" onclick="updateCartQuantity({{ forloop.index }}, 0)">
+                    {{ 'cart.remove' | t }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+
+        <!-- Order Summary -->
+        <div class="cart-summary animate-on-scroll stagger-1">
+          <h2 class="cart-summary__title">Order Summary</h2>
+
+          <div class="cart-summary__row">
+            <span>{{ 'cart.subtotal' | t }}</span>
+            <span>{{ cart.total_price | money }}</span>
+          </div>
+
+          <div class="cart-summary__row">
+            <span>Shipping</span>
+            <span style="color: var(--color-sage);">Calculated at checkout</span>
+          </div>
+
+          <div class="cart-summary__row cart-summary__row--total">
+            <span>Total</span>
+            <span>{{ cart.total_price | money }}</span>
+          </div>
+
+          <a href="/checkout" class="btn btn--primary btn--lg" style="width: 100%; margin-top: var(--space-lg);">
+            {{ 'cart.checkout' | t }}
+          </a>
+
+          <p class="cart-summary__note">
+            {{ 'cart.shipping_note' | t }}
+          </p>
+
+          <div class="divider" style="margin: var(--space-lg) 0;">
+            <span class="divider__icon">🍃</span>
+          </div>
+
+          <a href="{{ routes.all_products_collection_url }}" style="display: block; text-align: center; color: var(--color-forest); font-size: var(--text-sm); font-weight: 500;">
+            ← Continue Shopping
+          </a>
+        </div>
+      </div>
+    {% else %}
+      {%- comment -%} Empty cart state {%- endcomment -%}
+      <div class="cart-empty animate-on-scroll">
+        <div class="cart-empty__icon">
+          <svg viewBox="0 0 80 80" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M20 20h40v8c0 14-9 20-20 20S20 42 20 28v-8z"/>
+            <path d="M60 26h6a10 10 0 000-20h-6"/>
+            <path d="M30 12c0-4 3-6 3-10" stroke-linecap="round" opacity="0.4"/>
+            <path d="M40 10c0-4 3-6 3-10" stroke-linecap="round" opacity="0.4"/>
+            <path d="M50 12c0-4 3-6 3-10" stroke-linecap="round" opacity="0.4"/>
+            <line x1="28" y1="56" x2="52" y2="56" stroke-linecap="round"/>
+            <line x1="40" y1="48" x2="40" y2="56"/>
+          </svg>
+        </div>
+        <h2 class="cart-empty__title">{{ 'cart.empty_title' | t }}</h2>
+        <p class="cart-empty__text">{{ 'cart.empty_text' | t }}</p>
+        <a href="{{ routes.all_products_collection_url }}" class="btn btn--primary btn--lg">
+          {{ 'cart.continue_shopping' | t }}
+        </a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  function updateCartQuantity(line, quantity) {
+    fetch('{{ routes.cart_change_url }}.js', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ line: line, quantity: quantity })
+    })
+    .then(response => response.json())
+    .then(() => {
+      window.location.reload();
+    })
+    .catch(error => {
+      console.error('Error updating cart:', error);
+    });
+  }
+</script>
+
+<style>
+  .cart-page {
+    padding-bottom: var(--space-4xl);
+  }
+</style>

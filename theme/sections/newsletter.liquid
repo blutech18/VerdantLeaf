@@ -1,0 +1,46 @@
+{% comment %}
+  Verdant Leaf — Newsletter Section
+{% endcomment %}
+
+<section class="section section--dark newsletter" id="newsletter">
+  <div class="container container--narrow">
+    <div class="animate-on-scroll">
+      <span class="section-label">{{ 'newsletter.label' | t }}</span>
+      <h2 class="section-title" style="color: var(--color-cream);">{{ 'newsletter.title' | t }}</h2>
+      <p style="color: var(--color-sage-light); max-width: 480px; margin: 0 auto;">
+        {{ 'newsletter.subtitle' | t }}
+      </p>
+
+      <form class="newsletter__form" action="/contact#newsletter" method="post" id="newsletter-form">
+        <input type="hidden" name="form_type" value="customer">
+        <input type="hidden" name="contact[tags]" value="newsletter">
+        <input
+          type="email"
+          name="contact[email]"
+          class="newsletter__input"
+          placeholder="{{ 'newsletter.placeholder' | t }}"
+          required
+          autocomplete="email"
+          aria-label="Email address"
+          id="newsletter-email"
+        >
+        <button type="submit" class="btn btn--gold">
+          {{ 'newsletter.button' | t }}
+        </button>
+      </form>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Newsletter",
+  "class": "section-newsletter",
+  "settings": [],
+  "presets": [
+    {
+      "name": "Newsletter"
+    }
+  ]
+}
+{% endschema %}

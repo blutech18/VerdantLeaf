@@ -1,0 +1,28 @@
+{
+  "name": "freshtrack-server",
+  "version": "1.0.0",
+  "description": "FreshTrack — Batch Freshness Intelligence App (Backend)",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "migrate": "node db/migrate.js",
+    "seed": "node db/seed.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "drizzle-orm": "^0.45.2",
+    "express": "^4.21.0",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.11.0",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.10"
+  },
+  "overrides": {
+    "esbuild": "^0.25.0"
+  }
+}

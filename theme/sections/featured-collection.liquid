@@ -1,0 +1,79 @@
+{% comment %}
+  Verdant Leaf — Featured Collection Section
+  Displays a curated grid of products from a chosen collection
+{% endcomment %}
+
+<section class="section" id="featured-collection">
+  <div class="container">
+    <div class="featured-collection__header animate-on-scroll">
+      <div>
+        <span class="section-label">{{ 'featured_collection.label' | t }}</span>
+        <h2 class="section-title">{{ 'featured_collection.title' | t }}</h2>
+      </div>
+      <a href="{{ routes.all_products_collection_url }}" class="btn btn--secondary">
+        {{ 'featured_collection.view_all' | t }} →
+      </a>
+    </div>
+
+    <div class="featured-collection__products">
+      {% assign featured_collection = section.settings.collection %}
+      {% if featured_collection == blank %}
+        {% assign featured_collection = collections.all %}
+      {% endif %}
+      {% assign products_to_show = section.settings.products_to_show | default: 4 %}
+      {% assign tea_product_count = 0 %}
+
+      {% if featured_collection != blank and featured_collection.products.size > 0 %}
+        {% for product in featured_collection.products %}
+          {% assign product_tags = product.tags | join: ' ' %}
+          {% assign product_lookup = product.title | append: ' ' | append: product.type | append: ' ' | append: product.vendor | append: ' ' | append: product_tags | downcase %}
+          {% if product_lookup contains 'tea' or product_lookup contains 'matcha' or product_lookup contains 'sencha' or product_lookup contains 'oolong' or product_lookup contains 'puerh' or product_lookup contains 'pu-erh' or product_lookup contains 'jasmine' or product_lookup contains 'chamomile' or product_lookup contains 'darjeeling' %}
+            {% assign tea_product_count = tea_product_count | plus: 1 %}
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+
+      {% assign rendered_products = 0 %}
+      {% if tea_product_count > 0 %}
+        {% for product in featured_collection.products %}
+          {% assign product_tags = product.tags | join: ' ' %}
+          {% assign product_lookup = product.title | append: ' ' | append: product.type | append: ' ' | append: product.vendor | append: ' ' | append: product_tags | downcase %}
+          {% if rendered_products < products_to_show %}
+            {% if product_lookup contains 'tea' or product_lookup contains 'matcha' or product_lookup contains 'sencha' or product_lookup contains 'oolong' or product_lookup contains 'puerh' or product_lookup contains 'pu-erh' or product_lookup contains 'jasmine' or product_lookup contains 'chamomile' or product_lookup contains 'darjeeling' %}
+              {% render 'product-card', product: product %}
+              {% assign rendered_products = rendered_products | plus: 1 %}
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Featured Collection",
+  "class": "section-featured-collection",
+  "settings": [
+    {
+      "type": "collection",
+      "id": "collection",
+      "label": "Collection"
+    },
+    {
+      "type": "range",
+      "id": "products_to_show",
+      "min": 2,
+      "max": 8,
+      "step": 1,
+      "default": 4,
+      "label": "Products to show"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Featured Collection"
+    }
+  ]
+}
+{% endschema %}

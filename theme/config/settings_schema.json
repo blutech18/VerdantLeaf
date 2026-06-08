@@ -1,0 +1,20 @@
+[
+  {
+    "name": "theme_info",
+    "theme_name": "Verdant Leaf",
+    "theme_version": "1.0.0",
+    "theme_author": "Verdant Leaf Studio",
+    "theme_documentation_url": "https://verdantleaf.com",
+    "theme_support_url": "https://verdantleaf.com/support"
+  },
+  {
+    "name": "Brand",
+    "settings": [
+      {
+        "type": "image_picker",
+        "id": "favicon",
+        "label": "Favicon"
+      }
+    ]
+  }
+]

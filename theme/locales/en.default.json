@@ -1,0 +1,137 @@
+{
+  "general": {
+    "skip_to_content": "Skip to content",
+    "currency_symbol": "$"
+  },
+  "header": {
+    "menu_home": "Home",
+    "menu_shop": "Shop",
+    "menu_about": "Our Story",
+    "menu_quiz": "Tea Quiz",
+    "cart": "Cart"
+  },
+  "hero": {
+    "label": "Artisan Tea Collection",
+    "title": "From Leaf to <em>Cup</em>",
+    "subtitle": "Discover single-origin teas sourced directly from small farms across the world's finest growing regions.",
+    "cta_primary": "Shop Collection",
+    "cta_secondary": "Take the Tea Quiz"
+  },
+  "origin_map": {
+    "label": "Global Origins",
+    "title": "Where Our Teas Grow",
+    "subtitle": "Each tea tells the story of its terroir — the soil, altitude, and climate that shape its character."
+  },
+  "brewing_guide": {
+    "label": "The Perfect Cup",
+    "title": "Brewing Guide",
+    "subtitle": "Master the art of brewing with these essential steps.",
+    "step1_title": "Measure",
+    "step1_desc": "Use 2g of loose leaf per 200ml of water for the perfect ratio.",
+    "step2_title": "Heat",
+    "step2_desc": "Each tea has its ideal temperature. Green at 75°C, black at 95°C.",
+    "step3_title": "Steep",
+    "step3_desc": "Patience is key. 2-3 min for green, 3-5 min for black teas.",
+    "step4_title": "Enjoy",
+    "step4_desc": "Savor the aroma first, then taste. Each sip reveals new layers."
+  },
+  "featured_collection": {
+    "label": "Curated Selection",
+    "title": "Seasonal Favorites",
+    "view_all": "View All Teas"
+  },
+  "testimonials": {
+    "label": "What Tea Lovers Say",
+    "title": "Customer Stories"
+  },
+  "newsletter": {
+    "label": "Join the Journey",
+    "title": "Stay Connected",
+    "subtitle": "Get first access to new harvests, brewing tips, and exclusive offers.",
+    "placeholder": "Enter your email",
+    "button": "Subscribe"
+  },
+  "footer": {
+    "description": "Artisan loose-leaf teas sourced directly from small farms worldwide. Every cup tells a story of terroir, tradition, and craft.",
+    "shop": "Shop",
+    "company": "Company",
+    "support": "Support",
+    "copyright": "© 2026 Verdant Leaf. All rights reserved.",
+    "links": {
+      "all_teas": "All Teas",
+      "green_tea": "Green Tea",
+      "black_tea": "Black Tea",
+      "oolong": "Oolong",
+      "herbal": "Herbal & Wellness",
+      "about": "Our Story",
+      "sourcing": "Sourcing",
+      "sustainability": "Sustainability",
+      "blog": "Tea Journal",
+      "faq": "FAQ",
+      "shipping": "Shipping & Returns",
+      "contact": "Contact Us",
+      "privacy": "Privacy Policy"
+    }
+  },
+  "product": {
+    "add_to_cart": "Add to Cart",
+    "sold_out": "Sold Out",
+    "quantity": "Quantity",
+    "description": "Description",
+    "origin": "Origin",
+    "type": "Type",
+    "caffeine": "Caffeine",
+    "steep_time": "Steep Time",
+    "temperature": "Temperature",
+    "weight": "Weight",
+    "you_may_also_like": "You May Also Like"
+  },
+  "cart": {
+    "title": "Your Cart",
+    "empty_title": "Your cart is empty",
+    "empty_text": "Looks like you haven't added any teas yet.",
+    "continue_shopping": "Continue Shopping",
+    "subtotal": "Subtotal",
+    "shipping_note": "Shipping & taxes calculated at checkout",
+    "checkout": "Proceed to Checkout",
+    "remove": "Remove",
+    "update": "Update"
+  },
+  "collection": {
+    "all": "All",
+    "title": "Our Collection",
+    "subtitle": "Explore our curated selection of artisan loose-leaf teas from around the world.",
+    "products_count": "{{ count }} teas"
+  },
+  "quiz": {
+    "title": "Find Your Perfect Tea",
+    "subtitle": "Answer a few questions and we'll recommend teas tailored to your taste.",
+    "start": "Start Quiz",
+    "next": "Next",
+    "back": "Back",
+    "see_results": "See My Results",
+    "restart": "Retake Quiz",
+    "result_title": "Your Tea Match",
+    "result_subtitle": "Based on your preferences, we think you'll love these teas.",
+    "q1_title": "What flavors do you gravitate toward?",
+    "q1_o1": "Light & Floral",
+    "q1_o2": "Earthy & Smooth",
+    "q1_o3": "Rich & Malty",
+    "q1_o4": "Sweet & Fruity",
+    "q2_title": "How much caffeine do you prefer?",
+    "q2_o1": "None — caffeine-free",
+    "q2_o2": "Low — a gentle lift",
+    "q2_o3": "Moderate — balanced energy",
+    "q2_o4": "High — full power",
+    "q3_title": "When do you usually enjoy tea?",
+    "q3_o1": "Morning ritual",
+    "q3_o2": "Afternoon break",
+    "q3_o3": "Evening wind-down",
+    "q3_o4": "All day, every day",
+    "q4_title": "What's your brewing style?",
+    "q4_o1": "Quick & easy — 2 minutes max",
+    "q4_o2": "I enjoy the process — Gongfu style",
+    "q4_o3": "Cold brew for convenience",
+    "q4_o4": "I'm a beginner — guide me!"
+  }
+}

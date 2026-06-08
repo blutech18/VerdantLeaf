@@ -1,0 +1,19 @@
+{% comment %}
+  Verdant Leaf — Price Snippet
+  Renders product price with optional compare-at price
+  
+  Usage: {% render 'price', product: product %}
+{% endcomment %}
+
+{% if product.compare_at_price > product.price %}
+  <span class="product-card__price" style="color: var(--color-error);">
+    {{ product.price | money }}
+  </span>
+  <span class="card__price--compare" style="text-decoration: line-through; color: var(--color-text-muted); font-size: var(--text-sm);">
+    {{ product.compare_at_price | money }}
+  </span>
+{% else %}
+  <span class="product-card__price">
+    {{ product.price | money }}
+  </span>
+{% endif %}
