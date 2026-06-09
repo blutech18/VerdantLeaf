@@ -1,0 +1,54 @@
+﻿Take-Home Task: Shopify Store
+Tech Stack: Shopify, Vite, Node.js, Drizzle ORM
+We want to evaluate your creativity, product thinking, UI/UX, code quality, and architecture.
+Build:
+1. A custom Shopify theme for a store concept of your choice.
+2. A Shopify embedded app that solves a meaningful merchant/admin problem.
+The store idea and app concept should be original.
+________________
+
+
+Part 1: Shopify Theme
+Create a Shopify storefront for any fictional business/store you choose.
+Requirements
+* Use Shopify Liquid + CSS + minimal JavaScript
+* Build core pages:
+   * Home
+   * Collection
+   * Product
+   * Cart
+* Create at least 3 custom sections/components
+* Add 1 standout interactive feature that shows creativity (e.g. bundle builder, quiz, custom product experience, smart recommendations, etc.)
+* Focus on branding, UX, and originality
+________________
+
+
+Part 2: Embedded Shopify App
+Build an embedded Shopify Admin app that solves a useful merchant workflow/problem.
+Requirements
+* Frontend using Vite
+* Backend using Node.js
+* Database using Drizzle ORM
+* Implement Shopify OAuth + embedded app flow
+* Use MySQL with multiple related tables
+* Include:
+   * Dashboard
+   * Create/update workflow
+   * History/log/activity tracking
+   * At least 1 logic-based feature (ranking, scoring, alerts, recommendations, etc.)
+* Must show clear product thinking (not just basic CRUD)
+
+
+Deliverables
+Submit:
+* Shopify Theme Code
+* Embedded Shopify App Code
+* Database schema + migrations
+* Setup instructions
+* APP_DECISIONS.md explaining:
+   * Store concept
+   * App idea
+   * Key architecture/schema decisions
+   * Tradeoffs
+   * What you’d improve with more time
+________________
