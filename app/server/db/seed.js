@@ -29,19 +29,21 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 -- 1. Seed Store
 INSERT INTO stores (id, shopify_domain, access_token, shop_name, email) VALUES
-(1, 'verdantleaf-6yde7msm.myshopify.com', 'shpat_demo_token_xxxxx', 'Verdant Leaf', 'hello@verdantleaf.com');
+(1, 'verdantleafshop.myshopify.com', 'shpat_demo_token_xxxxx', 'Verdant Leaf', 'hello@verdantleaf.com');
 
 -- 2. Seed Products
+-- shopify_product_id values are the real product IDs in verdantleafshop,
+-- so each FreshTrack product traces back to its live Shopify catalog entry.
 INSERT INTO products (id, store_id, shopify_product_id, title, category, default_shelf_life_days) VALUES
-(1, 1, 1001, 'Uji Sencha Reserve', 'green_tea', 180),
-(2, 1, 1002, 'Golden Yunnan Tips', 'black_tea', 240),
-(3, 1, 1003, 'Ali Shan High Mountain', 'oolong', 210),
-(4, 1, 1004, 'Silver Needle Bai Hao', 'white_tea', 365),
-(5, 1, 1005, 'Ancient Tree Pu-erh', 'puerh', 730),
-(6, 1, 1006, 'Chamomile Meadow Blend', 'herbal', 365),
-(7, 1, 1007, 'Ceremonial Grade Matcha', 'matcha', 120),
-(8, 1, 1008, 'Dragon Pearl Jasmine', 'green_tea', 180),
-(9, 1, 1009, 'Darjeeling First Flush', 'black_tea', 240);
+(1, 1, 10248046149927, 'Uji Sencha Reserve', 'green_tea', 180),
+(2, 1, 10248046117159, 'Golden Yunnan Tips', 'black_tea', 240),
+(3, 1, 10248046051623, 'Ali Shan High Mountain', 'oolong', 210),
+(4, 1, 10248045986087, 'Silver Needle Bai Hao', 'white_tea', 365),
+(5, 1, 10248045953319, 'Ancient Tree Pu-erh', 'puerh', 730),
+(6, 1, 10248045887783, 'Chamomile Meadow Blend', 'herbal', 365),
+(7, 1, 10248045822247, 'Ceremonial Grade Matcha', 'matcha', 120),
+(8, 1, 10248045789479, 'Dragon Pearl Jasmine', 'green_tea', 180),
+(9, 1, 10248045691175, 'Darjeeling First Flush', 'black_tea', 240);
 
 -- 3. Seed Batches (mix of statuses for a realistic dashboard)
 INSERT INTO batches (id, product_id, lot_number, quantity, quantity_sold, manufactured_at, expires_at, freshness_score, status, supplier, notes) VALUES

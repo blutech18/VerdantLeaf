@@ -6,10 +6,28 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
 import { batches, products } from '../db/schema.js';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and } from 'drizzle-orm';
 import { calculateFreshness, logActivity } from '../services/freshness.js';
+import {
+  requirePositiveInt,
+  requireValidDateRange,
+  respondWithError,
+} from '../utils/validation.js';
 
 const router = Router();
+
+/**
+ * Returns the effective score/status for a stored batch, applying the
+ * sold-out override consistently across list and detail responses.
+ */
+function withLiveFreshness(batch) {
+  const isSoldOut = batch.quantity > 0 && batch.quantitySold >= batch.quantity;
+  if (isSoldOut) {
+    return { ...batch, freshnessScore: parseFloat(batch.freshnessScore), status: 'sold_out' };
+  }
+  const { score, status } = calculateFreshness(batch.manufacturedAt, batch.expiresAt);
+  return { ...batch, freshnessScore: score, status };
+}
 
 /**
  * GET /api/batches?storeId=1
@@ -17,7 +35,7 @@ const router = Router();
  */
 router.get('/', async (req, res) => {
   try {
-    const storeId = parseInt(req.query.storeId || '1', 10);
+    const storeId = req.storeId;
 
     const result = await db
       .select({
@@ -35,6 +53,7 @@ router.get('/', async (req, res) => {
         productId: batches.productId,
         productTitle: products.title,
         productCategory: products.category,
+        shopifyProductId: products.shopifyProductId,
       })
       .from(batches)
       .innerJoin(products, eq(batches.productId, products.id))
@@ -42,23 +61,9 @@ router.get('/', async (req, res) => {
       .orderBy(desc(batches.createdAt));
 
     // Recalculate freshness scores on read for accuracy
-    const enriched = result.map(batch => {
-      const { score, status } = calculateFreshness(batch.manufacturedAt, batch.expiresAt);
-      return {
-        ...batch,
-        freshnessScore: batch.quantitySold >= batch.quantity && batch.quantity > 0
-          ? parseFloat(batch.freshnessScore)
-          : score,
-        status: batch.quantitySold >= batch.quantity && batch.quantity > 0
-          ? 'sold_out'
-          : status,
-      };
-    });
-
-    res.json(enriched);
+    res.json(result.map(withLiveFreshness));
   } catch (error) {
-    console.error('Error fetching batches:', error);
-    res.status(500).json({ error: 'Failed to fetch batches' });
+    respondWithError(res, error, 'Failed to fetch batches');
   }
 });
 
@@ -83,22 +88,19 @@ router.get('/:id', async (req, res) => {
         productId: batches.productId,
         productTitle: products.title,
         productCategory: products.category,
+        shopifyProductId: products.shopifyProductId,
       })
       .from(batches)
       .innerJoin(products, eq(batches.productId, products.id))
-      .where(eq(batches.id, parseInt(req.params.id, 10)));
+      .where(and(eq(batches.id, parseInt(req.params.id, 10)), eq(products.storeId, req.storeId)));
 
     if (result.length === 0) {
       return res.status(404).json({ error: 'Batch not found' });
     }
 
-    const batch = result[0];
-    const { score, status } = calculateFreshness(batch.manufacturedAt, batch.expiresAt);
-
-    res.json({ ...batch, freshnessScore: score, status });
+    res.json(withLiveFreshness(result[0]));
   } catch (error) {
-    console.error('Error fetching batch:', error);
-    res.status(500).json({ error: 'Failed to fetch batch' });
+    respondWithError(res, error, 'Failed to fetch batch');
   }
 });
 
@@ -110,8 +112,18 @@ router.post('/', async (req, res) => {
   try {
     const { productId, lotNumber, quantity, manufacturedAt, expiresAt, supplier, notes } = req.body;
 
-    if (!productId || !lotNumber || !quantity || !manufacturedAt || !expiresAt) {
+    if (!productId || !lotNumber || quantity === undefined || !manufacturedAt || !expiresAt) {
       return res.status(400).json({ error: 'Missing required fields: productId, lotNumber, quantity, manufacturedAt, expiresAt' });
+    }
+
+    const parsedQuantity = requirePositiveInt(quantity, 'quantity');
+    requireValidDateRange(manufacturedAt, expiresAt);
+
+    // Ensure the target product belongs to the authenticated store.
+    const product = await db.select().from(products)
+      .where(and(eq(products.id, parseInt(productId, 10)), eq(products.storeId, req.storeId)));
+    if (product.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
     }
 
     const { score, status } = calculateFreshness(manufacturedAt, expiresAt);
@@ -119,7 +131,7 @@ router.post('/', async (req, res) => {
     const [result] = await db.insert(batches).values({
       productId: parseInt(productId, 10),
       lotNumber,
-      quantity: parseInt(quantity),
+      quantity: parsedQuantity,
       manufacturedAt: new Date(manufacturedAt),
       expiresAt: new Date(expiresAt),
       freshnessScore: score.toFixed(2),
@@ -128,26 +140,21 @@ router.post('/', async (req, res) => {
       notes: notes || null,
     });
 
-    // Get store ID for logging
-    const product = await db.select().from(products).where(eq(products.id, parseInt(productId, 10)));
-    if (product.length > 0) {
-      await logActivity(product[0].storeId, result.insertId, 'batch_created',
-        `New batch ${lotNumber} created (qty: ${quantity}, freshness: ${score.toFixed(1)}%)`,
-        { lotNumber, quantity, freshnessScore: score }
-      );
-    }
+    await logActivity(product[0].storeId, result.insertId, 'batch_created',
+      `New batch ${lotNumber} created (qty: ${parsedQuantity}, freshness: ${score.toFixed(1)}%)`,
+      { lotNumber, quantity: parsedQuantity, freshnessScore: score }
+    );
 
     res.status(201).json({
       id: result.insertId,
       lotNumber,
-      quantity,
+      quantity: parsedQuantity,
       freshnessScore: score,
       status,
       message: 'Batch created successfully',
     });
   } catch (error) {
-    console.error('Error creating batch:', error);
-    res.status(500).json({ error: 'Failed to create batch' });
+    respondWithError(res, error, 'Failed to create batch');
   }
 });
 
@@ -163,6 +170,21 @@ router.put('/:id', async (req, res) => {
     const existing = await db.select().from(batches).where(eq(batches.id, batchId));
     if (existing.length === 0) {
       return res.status(404).json({ error: 'Batch not found' });
+    }
+
+    // Scope to the authenticated store (prevents cross-store access by batch id).
+    const owner = await db.select({ storeId: products.storeId }).from(products)
+      .where(eq(products.id, existing[0].productId));
+    if (owner.length === 0 || owner[0].storeId !== req.storeId) {
+      return res.status(404).json({ error: 'Batch not found' });
+    }
+
+    // Validate the resulting date range (using existing values where omitted)
+    if (manufacturedAt || expiresAt) {
+      requireValidDateRange(
+        manufacturedAt || existing[0].manufacturedAt,
+        expiresAt || existing[0].expiresAt
+      );
     }
 
     const updates = {};
@@ -214,8 +236,7 @@ router.put('/:id', async (req, res) => {
 
     res.json({ message: 'Batch updated successfully' });
   } catch (error) {
-    console.error('Error updating batch:', error);
-    res.status(500).json({ error: 'Failed to update batch' });
+    respondWithError(res, error, 'Failed to update batch');
   }
 });
 
@@ -226,11 +247,23 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const batchId = parseInt(req.params.id, 10);
+
+    const existing = await db.select().from(batches).where(eq(batches.id, batchId));
+    if (existing.length === 0) {
+      return res.status(404).json({ error: 'Batch not found' });
+    }
+
+    // Scope to the authenticated store (prevents cross-store deletes by batch id).
+    const owner = await db.select({ storeId: products.storeId }).from(products)
+      .where(eq(products.id, existing[0].productId));
+    if (owner.length === 0 || owner[0].storeId !== req.storeId) {
+      return res.status(404).json({ error: 'Batch not found' });
+    }
+
     await db.delete(batches).where(eq(batches.id, batchId));
     res.json({ message: 'Batch deleted successfully' });
   } catch (error) {
-    console.error('Error deleting batch:', error);
-    res.status(500).json({ error: 'Failed to delete batch' });
+    respondWithError(res, error, 'Failed to delete batch');
   }
 });
 

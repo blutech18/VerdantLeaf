@@ -22,7 +22,7 @@ function toNumber(value) {
 function extractLotNumber(description = '') {
   return description.match(/batch\s+([A-Z]{2}-\d{4}-\d{3})/i)?.[1]
     || description.match(/Batch\s+([A-Z]{2}-\d{4}-\d{3})/i)?.[1]
-    || 'this batch';
+    || null;
 }
 
 function extractRuleName(description = '') {
@@ -43,19 +43,27 @@ export function formatActivityText(entry) {
   const description = entry?.description || '';
   const metadata = entry?.metadata || {};
   const lotNumber = metadata.lotNumber || extractLotNumber(description);
+  const productTitle = metadata.productTitle || metadata.product_title;
+
+  // Build a friendly identifier: lot number > product title > generic
+  const batchName = lotNumber 
+    ? `Batch ${lotNumber}` 
+    : productTitle 
+      ? `${productTitle} batch`
+      : 'Batch';
 
   switch (entry?.action) {
     case 'alert_triggered': {
       const ruleName = friendlyRuleName(metadata.ruleName || extractRuleName(description));
-      return `${ruleName} for ${lotNumber}. Shelf life is below your alert level.`;
+      return `${ruleName} triggered for ${batchName}. Shelf life is below threshold.`;
     }
 
     case 'discount_applied': {
       const discount = metadata.discount_percent
         || description.match(/of\s+(\d+)%/i)?.[1];
       return discount
-        ? `${discount}% discount applied to ${lotNumber}.`
-        : `Discount applied to ${lotNumber}.`;
+        ? `${discount}% discount applied to ${batchName}.`
+        : `Discount applied to ${batchName}.`;
     }
 
     case 'score_updated':
@@ -63,40 +71,49 @@ export function formatActivityText(entry) {
       const oldStatus = metadata.oldStatus || description.match(/:\s*([a-z_]+)\s*(?:->|→)/i)?.[1];
       const newStatus = metadata.newStatus || description.match(/(?:->|→)\s*([a-z_]+)/i)?.[1];
       const score = toNumber(metadata.newScore ?? metadata.score ?? description.match(/score:\s*([\d.]+)/i)?.[1]);
-      const statusCopy = newStatus
-        ? `moved to ${formatStatusLabel(newStatus)}`
-        : 'needs a status check';
-      const scoreCopy = score !== null ? ` ${score.toFixed(1)}% shelf life left.` : '';
 
       if (oldStatus && newStatus) {
-        return `${lotNumber} moved from ${formatStatusLabel(oldStatus)} to ${formatStatusLabel(newStatus)}.${scoreCopy}`;
+        const scoreCopy = score !== null ? ` (${score.toFixed(1)}% remaining)` : '';
+        return `${batchName} status changed: ${formatStatusLabel(oldStatus)} → ${formatStatusLabel(newStatus)}${scoreCopy}`;
       }
 
-      return `${lotNumber} ${statusCopy}.${scoreCopy}`;
+      if (newStatus) {
+        return `${batchName} marked as ${formatStatusLabel(newStatus)}.`;
+      }
+
+      return `${batchName} freshness updated.`;
     }
 
     case 'batch_created': {
       const quantity = metadata.quantity || description.match(/qty:\s*(\d+)/i)?.[1];
-      return quantity
-        ? `${lotNumber} added with ${quantity} units.`
-        : `${lotNumber} added to inventory.`;
+      if (quantity) {
+        return productTitle 
+          ? `New ${productTitle} batch added with ${quantity} units.`
+          : `${batchName} added with ${quantity} units.`;
+      }
+      return productTitle 
+        ? `New ${productTitle} batch added to inventory.`
+        : `${batchName} added to inventory.`;
     }
 
     case 'batch_updated':
-      return `${lotNumber} details updated.`;
+      if (metadata.isAddToCart) {
+        return description;
+      }
+      return `${batchName} details updated.`;
 
     case 'batch_sold_out':
-      return `${lotNumber} is sold out.`;
+      return `${batchName} is now sold out.`;
 
     case 'rule_created':
     case 'rule_updated':
     case 'rule_deleted': {
       const ruleName = friendlyRuleName(metadata.ruleName || extractRuleName(description));
       const action = entry.action.split('_')[1];
-      return `${ruleName} was ${action}.`;
+      return `Alert rule "${ruleName}" was ${action}.`;
     }
 
     default:
-      return description;
+      return description || 'Activity recorded.';
   }
 }

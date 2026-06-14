@@ -8,6 +8,7 @@ import { db } from '../db/index.js';
 import { batches, products, activityLogs } from '../db/schema.js';
 import { eq, desc, count, and, inArray } from 'drizzle-orm';
 import { recalculateAllBatches, getFreshnessDistribution, getWasteMetrics } from '../services/freshness.js';
+import { respondWithError } from '../utils/validation.js';
 
 const router = Router();
 
@@ -17,9 +18,7 @@ const router = Router();
  */
 router.get('/', async (req, res) => {
   try {
-    const storeId = parseInt(req.query.storeId || '1', 10);
-
-    // Recalculate all scores first
+    const storeId = req.storeId;
     const { updated, alerts } = await recalculateAllBatches(storeId);
 
     // Get freshness distribution
@@ -82,8 +81,7 @@ router.get('/', async (req, res) => {
       recalculation: { updated, alertsTriggered: alerts.length },
     });
   } catch (error) {
-    console.error('Error fetching dashboard:', error);
-    res.status(500).json({ error: 'Failed to fetch dashboard data' });
+    respondWithError(res, error, 'Failed to fetch dashboard data');
   }
 });
 
@@ -93,15 +91,14 @@ router.get('/', async (req, res) => {
  */
 router.post('/recalculate', async (req, res) => {
   try {
-    const storeId = parseInt(req.query.storeId || '1', 10);
+    const storeId = req.storeId;
     const result = await recalculateAllBatches(storeId);
     res.json({
       message: `Recalculated ${result.updated} batches`,
       ...result,
     });
   } catch (error) {
-    console.error('Error recalculating:', error);
-    res.status(500).json({ error: 'Failed to recalculate' });
+    respondWithError(res, error, 'Failed to recalculate');
   }
 });
 

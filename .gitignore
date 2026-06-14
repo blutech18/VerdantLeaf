@@ -4,3 +4,11 @@ node_modules/
 dist/
 .DS_Store
 Thumbs.db
+Instructions.txt
+
+# Editor / OS
+.vscode/
+.idea/
+
+# Local scratch / prep files (not part of the deliverable)
+tempfile/

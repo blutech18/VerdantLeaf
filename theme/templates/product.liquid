@@ -77,9 +77,33 @@
           {% endif %}
         </div>
 
+        {% assign display_description = product.description %}
+        {% assign parsed_origin = product.metafields.custom.origin %}
+        {% assign parsed_caffeine = product.metafields.custom.caffeine %}
+        {% assign parsed_steep = product.metafields.custom.steep_time %}
+        
+        {% if display_description contains 'Origin:' %}
+          {% assign lines = display_description | split: '<br>' %}
+          {% assign new_desc = '' %}
+          {% for line in lines %}
+            {% if line contains 'Origin:' %}
+              {% assign parsed_origin = line | split: 'Origin:</strong>' | last | split: 'Origin:' | last | strip | remove: '</p>' %}
+            {% elsif line contains 'Caffeine:' %}
+              {% assign parsed_caffeine = line | split: 'Caffeine:</strong>' | last | split: 'Caffeine:' | last | strip | remove: '</p>' %}
+            {% else %}
+              {% if new_desc == '' %}
+                {% assign new_desc = line %}
+              {% else %}
+                {% assign new_desc = new_desc | append: '<br>' | append: line %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {% assign display_description = new_desc | replace: '<p></p>', '' %}
+        {% endif %}
+
         <div class="product-page__description">
-          {% if product.description != blank %}
-            {{ product.description }}
+          {% if display_description != blank %}
+            {{ display_description }}
           {% else %}
             <p>
               A vibrant, umami-rich green tea sourced from the historic Uji region of Kyoto, Japan.
@@ -95,43 +119,91 @@
 
         <!-- Product Meta Details -->
         <div class="product-page__meta">
+          {% if parsed_origin != blank %}
           <div class="product-page__meta-item">
-            <span class="product-page__meta-label">{{ 'product.origin' | t }}</span>
-            <span class="product-page__meta-value">{{ product.metafields.custom.origin | default: 'Uji, Kyoto, Japan' }}</span>
+            <span class="product-page__meta-label">{{ 'product.origin' | t | default: 'Origin' }}</span>
+            <span class="product-page__meta-value">{{ parsed_origin }}</span>
           </div>
+          {% endif %}
+          
+          {% if product.type != blank %}
           <div class="product-page__meta-item">
-            <span class="product-page__meta-label">{{ 'product.type' | t }}</span>
-            <span class="product-page__meta-value">{{ product.type | default: 'Green Tea (Sencha)' }}</span>
+            <span class="product-page__meta-label">{{ 'product.type' | t | default: 'Type' }}</span>
+            <span class="product-page__meta-value">{{ product.type }}</span>
           </div>
+          {% endif %}
+          
+          {% if parsed_caffeine != blank %}
           <div class="product-page__meta-item">
-            <span class="product-page__meta-label">{{ 'product.caffeine' | t }}</span>
-            <span class="product-page__meta-value">{{ product.metafields.custom.caffeine | default: 'Moderate' }}</span>
+            <span class="product-page__meta-label">{{ 'product.caffeine' | t | default: 'Caffeine' }}</span>
+            <span class="product-page__meta-value">{{ parsed_caffeine }}</span>
           </div>
+          {% endif %}
+          
+          {% if product.metafields.custom.temperature != blank %}
           <div class="product-page__meta-item">
-            <span class="product-page__meta-label">{{ 'product.steep_time' | t }}</span>
-            <span class="product-page__meta-value">{{ product.metafields.custom.steep_time | default: '1-2 min' }}</span>
+            <span class="product-page__meta-label">{{ 'product.temperature' | t | default: 'Temperature' }}</span>
+            <span class="product-page__meta-value">{{ product.metafields.custom.temperature }}</span>
           </div>
+          {% endif %}
+          
           <div class="product-page__meta-item">
-            <span class="product-page__meta-label">{{ 'product.temperature' | t }}</span>
-            <span class="product-page__meta-value">{{ product.metafields.custom.temperature | default: '75°C / 167°F' }}</span>
-          </div>
-          <div class="product-page__meta-item">
-            <span class="product-page__meta-label">{{ 'product.weight' | t }}</span>
-            <span class="product-page__meta-value">{{ product.variants.first.title | default: '50g' }}</span>
+            <span class="product-page__meta-label">{{ 'product.weight' | t | default: 'Weight' }}</span>
+            <span class="product-page__meta-value">{{ product.selected_or_first_available_variant.title | default: '50g' }}</span>
           </div>
         </div>
 
         <!-- Add to Cart Form -->
         {% if product %}
-          <form action="{{ routes.cart_add_url }}" method="post" class="product-page__add-form" id="product-form">
-            <input type="hidden" name="id" value="{{ product.selected_or_first_available_variant.id }}">
+          {% assign current_variant = product.selected_or_first_available_variant %}
+          {% assign max_qty = 99 %}
+          {% if current_variant.inventory_management == 'shopify' and current_variant.inventory_policy == 'deny' %}
+            {% assign max_qty = current_variant.inventory_quantity %}
+          {% endif %}
+          <form class="product-page__add-form" id="product-form" onsubmit="return false;">
+            <input type="hidden" name="id" value="{{ current_variant.id }}">
             <div class="quantity-selector">
               <button type="button" class="qty-minus" aria-label="Decrease quantity">−</button>
-              <input type="number" name="quantity" value="1" min="1" max="99" aria-label="Quantity" id="product-quantity">
-              <button type="button" class="qty-plus" aria-label="Increase quantity">+</button>
+              <input type="number" name="quantity" value="1" min="1" max="{{ max_qty }}" aria-label="Quantity" id="product-quantity" data-max="{{ max_qty }}">
+              <button type="button" class="qty-plus" aria-label="Increase quantity" {% if 1 >= max_qty %}disabled{% endif %}>+</button>
             </div>
             {% if product.available %}
-              <button type="submit" class="btn btn--primary btn--lg" style="flex: 1;" id="add-to-cart">
+              <button type="button" class="btn btn--primary btn--lg" style="flex: 1;" id="add-to-cart"
+                onclick="
+                  var btn = this;
+                  var qty = parseInt(document.getElementById('product-quantity').value) || 1;
+                  var variantId = {{ current_variant.id }};
+                  btn.disabled = true;
+                  btn.textContent = 'Adding...';
+                  fetch('{{ routes.cart_add_url }}.js', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ items: [{ id: variantId, quantity: qty }] })
+                  })
+                  .then(function(r) {
+                    return r.json().then(function(data) {
+                      if (!r.ok) throw new Error(data.description || data.message || 'Could not add to cart');
+                      return data;
+                    });
+                  })
+                  .then(function() {
+                    btn.textContent = 'Added ✓';
+                    setTimeout(function() {
+                      btn.textContent = '{{ 'product.add_to_cart' | t }}';
+                      btn.disabled = false;
+                    }, 1500);
+                    if (typeof window.updateCartCount === 'function') window.updateCartCount();
+                  })
+                  .catch(function(e) {
+                    btn.textContent = '{{ 'product.add_to_cart' | t }}';
+                    btn.disabled = false;
+                    if (typeof showToast === 'function') {
+                      showToast(e.message);
+                    } else {
+                      alert(e.message);
+                    }
+                  });
+                ">
                 {{ 'product.add_to_cart' | t }}
               </button>
             {% else %}
@@ -154,27 +226,27 @@
         {% endif %}
 
         <!-- Trust badges -->
-        <div style="display: flex; gap: var(--space-xl); margin-top: var(--space-lg); justify-content: center;">
-          <div style="text-align: center; color: var(--color-text-muted); font-size: var(--text-xs);">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 4px;">
+        <div class="product-page__trust-badges">
+          <div class="product-page__trust-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
             </svg>
-            Freshness Guaranteed
+            <span>Freshness Guaranteed</span>
           </div>
-          <div style="text-align: center; color: var(--color-text-muted); font-size: var(--text-xs);">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 4px;">
+          <div class="product-page__trust-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <rect x="1" y="3" width="15" height="13" rx="2"/>
               <path d="M16 8h4l3 3v5a2 2 0 01-2 2h-1"/>
               <circle cx="5.5" cy="18.5" r="2.5"/>
               <circle cx="18.5" cy="18.5" r="2.5"/>
             </svg>
-            Free Shipping $50+
+            <span>Free Shipping $50+</span>
           </div>
-          <div style="text-align: center; color: var(--color-text-muted); font-size: var(--text-xs);">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 4px;">
+          <div class="product-page__trust-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66C7.72 17.12 9.3 13 17 11V14l5-6-5-6v6z"/>
             </svg>
-            Easy Returns
+            <span>Easy Returns</span>
           </div>
         </div>
       </div>
@@ -190,20 +262,60 @@
 
     const minus = document.querySelector('.qty-minus');
     const plus = document.querySelector('.qty-plus');
+    const maxQty = parseInt(qtyInput.getAttribute('data-max')) || 99;
+
+    function showToast(message, type = 'error') {
+      let container = document.getElementById('toast-container');
+      if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        document.body.appendChild(container);
+      }
+      const toast = document.createElement('div');
+      toast.className = `toast toast--${type}`;
+      toast.innerHTML = `<div class="toast__message">${message}</div>`;
+      container.appendChild(toast);
+      setTimeout(() => toast.classList.add('toast--visible'), 10);
+      setTimeout(() => {
+        toast.classList.remove('toast--visible');
+        setTimeout(() => toast.remove(), 300);
+      }, 5000);
+    }
+
+    function checkQtyLimit() {
+      let val = parseInt(qtyInput.value) || 1;
+      if (val > maxQty) {
+        qtyInput.value = maxQty;
+        showToast(`Sorry, we only have ${maxQty} items in stock.`);
+      }
+      if (plus) plus.disabled = (parseInt(qtyInput.value) >= maxQty);
+    }
 
     if (minus) {
       minus.addEventListener('click', () => {
         const val = parseInt(qtyInput.value) || 1;
-        if (val > 1) qtyInput.value = val - 1;
+        if (val > 1) {
+          qtyInput.value = val - 1;
+          if (plus) plus.disabled = (val - 1 >= maxQty);
+        }
       });
     }
 
     if (plus) {
       plus.addEventListener('click', () => {
         const val = parseInt(qtyInput.value) || 1;
-        if (val < 99) qtyInput.value = val + 1;
+        if (val < maxQty) {
+          qtyInput.value = val + 1;
+          if (val + 1 >= maxQty) plus.disabled = true;
+        }
       });
     }
+
+    qtyInput.addEventListener('change', checkQtyLimit);
+    qtyInput.addEventListener('keyup', () => {
+      let val = parseInt(qtyInput.value);
+      if (val > maxQty) checkQtyLimit();
+    });
 
     // Thumbnail gallery
     document.querySelectorAll('.product-page__thumbnail').forEach(thumb => {
@@ -222,5 +334,42 @@
 <style>
   .product-page {
     padding-bottom: var(--space-4xl);
+  }
+
+  /* Toast Notification */
+  #toast-container {
+    position: fixed;
+    bottom: var(--space-xl);
+    left: var(--space-xl);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    pointer-events: none;
+  }
+  
+  .toast {
+    display: inline-block;
+    background: #2a2a2a;
+    color: #ffffff;
+    padding: 12px 24px;
+    border-radius: 30px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(20px);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: auto;
+    font-size: 14px;
+    font-weight: 500;
+    max-width: 350px;
+  }
+  
+  .toast--visible {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  
+  .toast__message {
+    line-height: 1.4;
   }
 </style>

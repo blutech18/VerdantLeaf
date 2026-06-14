@@ -5,22 +5,32 @@
 
 import { Router } from 'express';
 import { db } from '../db/index.js';
-import { activityLogs, batches } from '../db/schema.js';
-import { eq, desc, and, sql } from 'drizzle-orm';
+import { activityLogs } from '../db/schema.js';
+import { eq, desc, asc, and, sql, gte, lte, ilike, or } from 'drizzle-orm';
+import { respondWithError } from '../utils/validation.js';
+import { resolveStore } from '../utils/sessionAuth.js';
 
 const router = Router();
+
+// Storefront events are recorded as `batch_updated` with an `isAddToCart`
+// flag in metadata, which the admin UI renders as "Added to cart".
+const STOREFRONT_ACTIONS = new Set(['batch_updated']);
 
 /**
  * GET /api/logs?storeId=1&limit=50&offset=0&action=alert_triggered&batchId=5
  * List activity logs with optional filters
  */
-router.get('/', async (req, res) => {
+router.get('/', resolveStore, async (req, res) => {
   try {
-    const storeId = parseInt(req.query.storeId || '1', 10);
+    const storeId = req.storeId;
     const limit = parseInt(req.query.limit || '50', 10);
     const offset = parseInt(req.query.offset || '0', 10);
     const actionFilter = req.query.action;
     const batchIdFilter = req.query.batchId ? parseInt(req.query.batchId, 10) : null;
+    const startDate = req.query.startDate;
+    const endDate = req.query.endDate;
+    const search = req.query.search;
+    const sortDir = req.query.sortDir === 'asc' ? asc : desc;
 
     const conditions = [eq(activityLogs.storeId, storeId)];
 
@@ -30,12 +40,28 @@ router.get('/', async (req, res) => {
     if (batchIdFilter) {
       conditions.push(eq(activityLogs.batchId, batchIdFilter));
     }
+    if (startDate) {
+      // Compare only the date part (ignore time) - startDate format is YYYY-MM-DD
+      conditions.push(sql`DATE(${activityLogs.createdAt}) >= ${startDate}`);
+    }
+    if (endDate) {
+      // Compare only the date part (ignore time) - endDate format is YYYY-MM-DD
+      conditions.push(sql`DATE(${activityLogs.createdAt}) <= ${endDate}`);
+    }
+    if (search) {
+      conditions.push(
+        or(
+          ilike(activityLogs.description, `%${search}%`),
+          ilike(activityLogs.action, `%${search}%`)
+        )
+      );
+    }
 
     const logs = await db
       .select()
       .from(activityLogs)
       .where(and(...conditions))
-      .orderBy(desc(activityLogs.createdAt))
+      .orderBy(sortDir(activityLogs.createdAt))
       .limit(limit)
       .offset(offset);
 
@@ -55,8 +81,28 @@ router.get('/', async (req, res) => {
       offset,
     });
   } catch (error) {
-    console.error('Error fetching logs:', error);
-    res.status(500).json({ error: 'Failed to fetch activity logs' });
+    respondWithError(res, error, 'Failed to fetch activity logs');
+  }
+});
+
+/**
+ * POST /api/logs/track
+ * Generic tracking endpoint for storefront events (e.g. Add to Cart)
+ */
+router.post('/track', async (req, res) => {
+  try {
+    const { storeId, action, description, metadata } = req.body;
+    const safeAction = STOREFRONT_ACTIONS.has(action) ? action : 'batch_updated';
+
+    await db.insert(activityLogs).values({
+      storeId: parseInt(storeId || '1', 10),
+      action: safeAction,
+      description: description || 'Storefront action recorded',
+      metadata: metadata || {},
+    });
+    res.json({ success: true });
+  } catch (error) {
+    respondWithError(res, error, 'Failed to track event');
   }
 });
 

@@ -108,7 +108,7 @@
 </head>
 <body class="template-{{ template.name | handle }}{% if template.suffix %} template-{{ template.name }}-{{ template.suffix }}{% endif %}">
 
-  <a href="#main-content" class="visually-hidden">{{ 'general.skip_to_content' | t }}</a>
+  <a href="#main-content" class="skip-link">{{ 'general.skip_to_content' | t }}</a>
 
   {% section 'header' %}
 
@@ -142,28 +142,34 @@
       const header = document.querySelector('.site-header');
       if (!header) return;
 
-      let lastScroll = 0;
       window.addEventListener('scroll', () => {
-        const currentScroll = window.pageYOffset;
-        if (currentScroll > 50) {
-          header.classList.add('scrolled');
-        } else {
-          header.classList.remove('scrolled');
-        }
-        lastScroll = currentScroll;
+        header.classList.toggle('scrolled', window.pageYOffset > 50);
       }, { passive: true });
     })();
 
-    // Mobile menu toggle
+    // Mobile menu toggle (with aria, Escape, and body scroll lock)
     (function() {
       const toggle = document.querySelector('.header__menu-toggle');
       const nav = document.querySelector('.header__nav');
       if (!toggle || !nav) return;
 
+      function setOpen(isOpen) {
+        nav.classList.toggle('is-open', isOpen);
+        toggle.setAttribute('aria-expanded', String(isOpen));
+        toggle.setAttribute('aria-label', isOpen ? 'Close menu' : 'Open menu');
+        document.body.classList.toggle('nav-open', isOpen);
+      }
+
       toggle.addEventListener('click', () => {
-        nav.classList.toggle('is-open');
-        const isOpen = nav.classList.contains('is-open');
-        toggle.setAttribute('aria-expanded', isOpen);
+        setOpen(!nav.classList.contains('is-open'));
+      });
+
+      // Close after tapping a nav link or pressing Escape
+      nav.addEventListener('click', (e) => {
+        if (e.target.closest('a')) setOpen(false);
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && nav.classList.contains('is-open')) setOpen(false);
       });
     })();
 
@@ -179,5 +185,6 @@
       }, { passive: true });
     })();
   </script>
+  {% render 'freshtrack-tracker' %}
 </body>
 </html>

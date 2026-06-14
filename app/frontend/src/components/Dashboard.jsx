@@ -1,98 +1,58 @@
 import React, { useState, useEffect } from 'react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
+import { CheckCircleIcon, ClipboardIcon } from './Icons';
 import { formatActivityText, formatStatusLabel } from '../utils/activity';
+import { getScoreColor, timeAgo } from '../utils/format';
+import { getActivityMeta } from '../utils/activityMeta';
+import { api } from '../api';
+import { useToast } from './Toast';
 
-const API_BASE = '/api';
-const STORE_ID = 1; // Demo store
-
-// Mock data for demo when API is not available
-const MOCK_DASHBOARD = {
+const EMPTY_DASHBOARD = {
   metrics: {
-    totalProducts: 9,
-    totalBatches: 17,
-    avgFreshness: '51.1',
-    wasteRate: '2.7',
-    atRiskCount: 5,
-    expiredCount: 2,
-    totalQuantity: 850,
-    totalSold: 369,
-    wastedQuantity: 23,
+    totalProducts: 0,
+    totalBatches: 0,
+    avgFreshness: '0',
+    wasteRate: '0',
+    atRiskCount: 0,
+    expiredCount: 0,
+    totalQuantity: 0,
+    totalSold: 0,
+    wastedQuantity: 0,
   },
-  distribution: { active: 8, warning: 2, critical: 3, expired: 2, sold_out: 2 },
-  atRiskBatches: [
-    { id: 1, lotNumber: 'VL-2026-031', freshnessScore: '41.20', status: 'warning', expiresAt: '2026-09-01', productTitle: 'Ali Shan High Mountain' },
-    { id: 2, lotNumber: 'VL-2026-028', freshnessScore: '12.30', status: 'critical', expiresAt: '2026-06-20', productTitle: 'Golden Yunnan Tips' },
-    { id: 3, lotNumber: 'VL-2026-025', freshnessScore: '21.90', status: 'critical', expiresAt: '2026-07-30', productTitle: 'Uji Sencha Reserve' },
-  ],
-  recentActivity: [
-    { id: 1, action: 'alert_triggered', description: 'Alert "Low Freshness" triggered for batch VL-2026-028 (score: 12.3 < threshold: 15)', createdAt: '2026-06-05T08:00:00Z' },
-    { id: 2, action: 'score_updated', description: 'Batch VL-2026-031: active → warning (score: 22.5)', createdAt: '2026-06-05T06:00:00Z' },
-    { id: 3, action: 'batch_created', description: 'New batch VL-2026-045 created (qty: 55, freshness: 96.8%)', createdAt: '2026-05-28T12:00:00Z' },
-    { id: 4, action: 'discount_applied', description: 'Auto-discount of 20% applied to batch VL-2026-019', createdAt: '2026-06-04T08:00:00Z' },
-    { id: 5, action: 'rule_created', description: 'Alert rule "Critical Stock" created (threshold: 10%, action: email)', createdAt: '2026-06-03T10:00:00Z' },
-  ],
-  recalculation: { updated: 3, alertsTriggered: 1 },
+  distribution: { active: 0, warning: 0, critical: 0, expired: 0, sold_out: 0 },
+  atRiskBatches: [],
+  recentActivity: [],
+  recalculation: { updated: 0, alertsTriggered: 0 },
 };
-
-function getScoreColor(score) {
-  const s = parseFloat(score);
-  if (s >= 60) return '#27ae60';
-  if (s >= 30) return '#f39c12';
-  if (s > 0) return '#e74c3c';
-  return '#95a5a6';
-}
-
-function getActionIcon(action) {
-  const map = {
-    batch_created: { icon: '📦', cls: 'create' },
-    batch_updated: { icon: '✏️', cls: 'update' },
-    score_updated: { icon: '📊', cls: 'update' },
-    alert_triggered: { icon: '🔔', cls: 'alert' },
-    discount_applied: { icon: '💰', cls: 'create' },
-    batch_expired: { icon: '⚠️', cls: 'expire' },
-    batch_sold_out: { icon: '✅', cls: 'create' },
-    rule_created: { icon: '⚙️', cls: 'update' },
-    rule_updated: { icon: '⚙️', cls: 'update' },
-    rule_deleted: { icon: '🗑️', cls: 'expire' },
-  };
-  return map[action] || { icon: '📋', cls: 'update' };
-}
-
-function timeAgo(dateStr) {
-  const now = new Date();
-  const date = new Date(dateStr);
-  const diff = Math.floor((now - date) / 1000);
-  if (diff < 60) return 'just now';
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
-}
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const notify = useToast();
 
   useEffect(() => {
     fetchDashboard();
+    const interval = setInterval(fetchDashboard, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   async function fetchDashboard() {
+    setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/dashboard?storeId=${STORE_ID}`);
-      if (res.ok) {
-        setData(await res.json());
-      } else {
-        setData(MOCK_DASHBOARD);
-      }
-    } catch {
-      setData(MOCK_DASHBOARD);
+      setData(await api.getDashboard());
+    } catch (err) {
+      setData(EMPTY_DASHBOARD);
+      notify(`Could not load dashboard: ${err.message}`, 'error');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
-  if (loading) {
+  if (loading && !data) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--ft-text-muted)' }}>
-        Loading dashboard...
+      <div className="loading-state">
+        <div className="spinner" />
+        Loading dashboard…
       </div>
     );
   }
@@ -100,7 +60,8 @@ export default function Dashboard() {
   if (!data) return null;
 
   const { metrics, distribution, atRiskBatches, recentActivity } = data;
-  const totalDist = distribution.active + distribution.warning + distribution.critical + distribution.expired;
+  const totalDist = distribution.active + distribution.warning + distribution.critical
+    + distribution.expired + (distribution.sold_out || 0);
   const visibleAtRiskBatches = (atRiskBatches || []).slice(0, 5);
   const visibleRecentActivity = (recentActivity || []).slice(0, 5);
 
@@ -108,8 +69,12 @@ export default function Dashboard() {
     <div className="dashboard-page">
       {/* Page Header */}
       <div className="page-header">
-        <h1>Inventory Overview</h1>
-        <p>A quick view of what is ready to sell, what needs attention, and what changed recently.</p>
+        <div className="page-header__row">
+          <h1>Inventory Overview</h1>
+        </div>
+        <div className="page-header__row">
+          <p>A quick view of what is ready to sell, what needs attention, and what changed recently.</p>
+        </div>
       </div>
 
       {/* Metric Cards */}
@@ -143,37 +108,68 @@ export default function Dashboard() {
           <div className="panel dashboard-health-panel">
             <div className="panel__header">
               <span className="panel__title">Inventory Health</span>
-              <button className="btn btn--secondary btn--sm" onClick={fetchDashboard}>
-                Refresh
+              <button className="btn btn--secondary btn--sm" onClick={fetchDashboard} disabled={loading}>
+                {loading ? 'Refreshing...' : 'Refresh'}
               </button>
             </div>
-            <div className="panel__body">
-              {totalDist > 0 && (
-                <div className="freshness-bar">
-                  <div className="freshness-bar__segment freshness-bar__segment--active" style={{ width: `${(distribution.active / totalDist) * 100}%` }} />
-                  <div className="freshness-bar__segment freshness-bar__segment--warning" style={{ width: `${(distribution.warning / totalDist) * 100}%` }} />
-                  <div className="freshness-bar__segment freshness-bar__segment--critical" style={{ width: `${(distribution.critical / totalDist) * 100}%` }} />
-                  <div className="freshness-bar__segment freshness-bar__segment--expired" style={{ width: `${(distribution.expired / totalDist) * 100}%` }} />
+            <div className="panel__body" style={{ opacity: loading ? 0.5 : 1, pointerEvents: loading ? 'none' : 'auto', transition: 'opacity 0.2s' }}>
+              {totalDist > 0 ? (
+                <div className="chart-container">
+                    <ResponsiveContainer width="100%" height={200}>
+                      <BarChart
+                      data={[
+                        { name: 'Ready', value: distribution.active, color: '#27ae60' },
+                        { name: 'Warning', value: distribution.warning, color: '#f39c12' },
+                        { name: 'Critical', value: distribution.critical, color: '#e74c3c' },
+                        { name: 'Expired', value: distribution.expired, color: '#95a5a6' },
+                        { name: 'Sold out', value: distribution.sold_out || 0, color: '#3498db' },
+                      ]}
+                      margin={{ top: 10, right: 20, left: 0, bottom: 5 }}
+                      barCategoryGap="15%"
+                    >
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e0e0" />
+                      <XAxis 
+                        dataKey="name" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fontSize: 11, fill: '#888' }}
+                        dy={8}
+                        interval={0}
+                      />
+                      <YAxis 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fontSize: 11, fill: '#888' }}
+                        allowDecimals={false}
+                        width={30}
+                      />
+                      <Tooltip
+                        formatter={(value, name) => [`${value} batches`, '']}
+                        contentStyle={{ borderRadius: 8, border: '1px solid var(--ft-border)', boxShadow: 'var(--ft-shadow)', padding: '8px 12px' }}
+                        itemStyle={{ color: 'var(--ft-text)', fontWeight: 600 }}
+                        cursor={{ fill: 'rgba(0,0,0,0.04)' }}
+                      />
+                      <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                        {[
+                          { name: 'Ready', value: distribution.active, color: '#27ae60' },
+                          { name: 'Warning', value: distribution.warning, color: '#f39c12' },
+                          { name: 'Critical', value: distribution.critical, color: '#e74c3c' },
+                          { name: 'Expired', value: distribution.expired, color: '#95a5a6' },
+                          { name: 'Sold out', value: distribution.sold_out || 0, color: '#3498db' },
+                        ].map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="empty-state">
+                  <div className="empty-state__icon"><CheckCircleIcon size={32} /></div>
+                  <div className="empty-state__title">No data yet</div>
+                  <div className="empty-state__text">Add batches to see your inventory health.</div>
                 </div>
               )}
-              <div className="freshness-legend">
-                <div className="freshness-legend__item">
-                  <div className="freshness-legend__dot" style={{ background: '#27ae60' }} />
-                  Ready to sell ({distribution.active})
-                </div>
-                <div className="freshness-legend__item">
-                  <div className="freshness-legend__dot" style={{ background: '#f39c12' }} />
-                  Check soon ({distribution.warning})
-                </div>
-                <div className="freshness-legend__item">
-                  <div className="freshness-legend__dot" style={{ background: '#e74c3c' }} />
-                  Action needed ({distribution.critical})
-                </div>
-                <div className="freshness-legend__item">
-                  <div className="freshness-legend__dot" style={{ background: '#95a5a6' }} />
-                  Past expiry ({distribution.expired})
-                </div>
-              </div>
             </div>
           </div>
 
@@ -181,6 +177,9 @@ export default function Dashboard() {
           <div className="panel dashboard-review-panel">
             <div className="panel__header">
               <span className="panel__title">Batches to Review</span>
+              {visibleAtRiskBatches.length === 0 && metrics.atRiskCount === 0 && (
+                <span style={{ fontSize: 11, color: 'var(--ft-success)', fontWeight: 500 }}>All healthy ✓</span>
+              )}
             </div>
             <div className="panel__body" style={{ padding: 0 }}>
               {visibleAtRiskBatches.length > 0 ? (
@@ -190,7 +189,7 @@ export default function Dashboard() {
                       <th>Batch</th>
                       <th>Product</th>
                       <th>Shelf life left</th>
-                      <th>Next step</th>
+                      <th>Status</th>
                       <th>Expires</th>
                     </tr>
                   </thead>
@@ -199,9 +198,9 @@ export default function Dashboard() {
                       const score = parseFloat(batch.freshnessScore);
                       return (
                         <tr key={batch.id}>
-                          <td><strong>{batch.lotNumber}</strong></td>
-                          <td>{batch.productTitle}</td>
-                          <td>
+                          <td data-label="Batch"><strong>{batch.lotNumber}</strong></td>
+                          <td data-label="Product">{batch.productTitle}</td>
+                          <td data-label="Shelf life left">
                             <div className="freshness-score">
                               <div className="freshness-score__bar">
                                 <div className="freshness-score__fill" style={{ width: `${score}%`, background: getScoreColor(score) }} />
@@ -209,12 +208,12 @@ export default function Dashboard() {
                               <span style={{ color: getScoreColor(score), fontSize: 12 }}>{score.toFixed(1)}%</span>
                             </div>
                           </td>
-                          <td>
+                          <td data-label="Status">
                             <span className={`status-badge status-badge--${batch.status}`}>
                               {formatStatusLabel(batch.status)}
                             </span>
                           </td>
-                          <td style={{ fontSize: 12, color: 'var(--ft-text-muted)' }}>
+                          <td data-label="Expires" style={{ fontSize: 12, color: 'var(--ft-text-muted)' }}>
                             {new Date(batch.expiresAt).toLocaleDateString()}
                           </td>
                         </tr>
@@ -223,10 +222,15 @@ export default function Dashboard() {
                   </tbody>
                 </table>
               ) : (
-                <div className="empty-state">
-                  <div className="empty-state__icon">✅</div>
+                <div className="empty-state" style={{ padding: '32px 20px' }}>
+                  <div className="empty-state__icon" style={{ color: 'var(--ft-success)' }}><CheckCircleIcon size={32} /></div>
                   <div className="empty-state__title">Everything looks healthy</div>
-                  <div className="empty-state__text">No batches need attention right now.</div>
+                  <div className="empty-state__text">
+                    No batches need attention right now.<br/>
+                    <span style={{ fontSize: 11, color: 'var(--ft-text-muted)' }}>
+                      Batches with less than 60% shelf life remaining will appear here.
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
@@ -239,10 +243,10 @@ export default function Dashboard() {
             <div className="panel__header">
               <span className="panel__title">Recent Updates</span>
             </div>
-            <div className="panel__body" style={{ padding: '12px 20px' }}>
+            <div className="panel__body" style={{ padding: '16px 20px' }}>
               {visibleRecentActivity.length > 0 ? (
                 visibleRecentActivity.map(entry => {
-                  const { icon, cls } = getActionIcon(entry.action);
+                  const { icon, cls } = getActivityMeta(entry);
                   return (
                     <div className="log-entry" key={entry.id}>
                       <div className={`log-entry__icon log-entry__icon--${cls}`}>
@@ -257,7 +261,7 @@ export default function Dashboard() {
                 })
               ) : (
                 <div className="empty-state">
-                  <div className="empty-state__icon">📋</div>
+                  <div className="empty-state__icon"><ClipboardIcon size={32} /></div>
                   <div className="empty-state__text">No updates yet</div>
                 </div>
               )}

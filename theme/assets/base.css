@@ -117,13 +117,15 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
+html,
 body {
   font-family: var(--font-body);
   font-size: var(--text-base);
   line-height: 1.7;
   color: var(--color-text);
   background-color: var(--color-bg);
-  overflow-x: hidden;
+  overflow-x: clip;
+  width: 100%;
 }
 
 img,
@@ -515,17 +517,34 @@ p:last-child {
   transition: background var(--duration-fast);
 }
 
-.quantity-selector button:hover {
+.quantity-selector button:hover:not(:disabled) {
   background: var(--color-cream-dark);
+}
+
+.quantity-selector button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--color-linen);
 }
 
 .quantity-selector input {
   width: 50px;
+  height: 40px;
+  padding: 0;
+  margin: 0;
   text-align: center;
   border: none;
+  background: var(--color-linen) !important;
+  background-color: var(--color-linen) !important;
+  color: var(--color-charcoal) !important;
   font-size: var(--text-base);
   font-weight: 600;
   -moz-appearance: textfield;
+}
+
+.quantity-selector input:focus {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 .quantity-selector input::-webkit-inner-spin-button,
@@ -642,7 +661,7 @@ p:last-child {
 
 .animate-on-scroll.is-visible {
   opacity: 1;
-  transform: translateY(0);
+  transform: none;
 }
 
 .stagger-1 { transition-delay: 100ms; }
@@ -662,6 +681,31 @@ p:last-child {
   clip: rect(0, 0, 0, 0) !important;
   white-space: nowrap !important;
   border: 0 !important;
+}
+
+/* Skip link — hidden until focused, then revealed for keyboard users */
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: var(--space-md);
+  z-index: 1000;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-forest);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: top var(--duration-fast) var(--ease-out);
+}
+
+.skip-link:focus {
+  top: var(--space-md);
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+}
+
+/* Prevent background scroll while the mobile nav is open */
+body.nav-open {
+  overflow: hidden;
 }
 
 .flex { display: flex; }

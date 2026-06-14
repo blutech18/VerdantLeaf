@@ -59,30 +59,17 @@
         </div>
       </div>
 
-      <!-- Right Column: Animated Product Slideshow -->
-      <div class="hero__products-column">
-        <div class="hero__products-slideshow">
-          {% assign catalog_collection = collections.all %}
-          {% assign slide_count = 0 %}
-          {% if catalog_collection != blank and catalog_collection.products.size > 0 %}
-            {% for product in catalog_collection.products limit: 6 %}
-              {% if product.featured_image != blank %}
-                <div class="hero__product-slide {% if slide_count == 0 %}is-active{% endif %}" data-hero-product-slide>
-                  <a href="{{ product.url }}">
-                    <img
-                      src="{{ product.featured_image | image_url: width: 600 }}"
-                      alt="{{ product.title | escape }}"
-                      class="hero__product-image"
-                      loading="lazy"
-                      width="350"
-                      height="350"
-                    >
-                  </a>
-                </div>
-                {% assign slide_count = slide_count | plus: 1 %}
-              {% endif %}
-            {% endfor %}
-          {% endif %}
+      <!-- Right Column: Minimalist Floating Image -->
+      <div class="hero__image-column">
+        <div class="hero__floating-element">
+          <img
+            src="{{ 'premium_matcha_hero.png' | asset_url }}"
+            alt="Premium Matcha Selection"
+            class="hero__minimal-image"
+            loading="lazy"
+            width="450"
+            height="450"
+          >
         </div>
       </div>
     </div>
@@ -96,42 +83,43 @@
 </section>
 
 <script>
-  (function() {
-    const slides = document.querySelectorAll('[data-hero-product-slide]');
-    if (slides.length <= 1) return;
+  document.addEventListener('DOMContentLoaded', () => {
+    const heroBg = document.querySelector('.hero__bg-image');
+    const heroSection = document.getElementById('hero-section');
+    
+    if (!heroBg || !heroSection) return;
 
-    let currentIndex = 0;
+    let ticking = false;
+    let scrollY = 0;
 
-    function updateSlides(exitingIndex) {
-      const len = slides.length;
-      slides.forEach((slide, idx) => {
-        slide.classList.remove('is-active', 'is-next', 'is-next-2', 'is-exiting');
-        
-        if (idx === exitingIndex) {
-          slide.classList.add('is-exiting');
-        } else if (idx === currentIndex) {
-          slide.classList.add('is-active');
-        } else if (idx === (currentIndex + 1) % len) {
-          slide.classList.add('is-next');
-        } else if (idx === (currentIndex + 2) % len) {
-          slide.classList.add('is-next-2');
-        }
-      });
+    function updateParallax() {
+      // Disable parallax effect entirely on mobile screens for better performance
+      if (window.innerWidth <= 768) {
+        heroBg.style.transform = 'none';
+        ticking = false;
+        return;
+      }
+
+      // Parallax logic: background moves down relative to the container as the user scrolls down,
+      // creating the illusion that it is further away (scrolling slower than the foreground).
+      const bgY = scrollY * 0.35; 
+      heroBg.style.transform = `translateY(${bgY}px)`;
+      ticking = false;
     }
 
-    function nextSlide() {
-      const exitingIndex = currentIndex;
-      currentIndex = (currentIndex + 1) % slides.length;
-      updateSlides(exitingIndex);
-    }
-
-    // Initialize without an exiting slide
-    updateSlides(-1);
-
-    // Seamless auto-transition cycle every 4 seconds
-    setInterval(nextSlide, 4000);
-  })();
+    window.addEventListener('scroll', () => {
+      scrollY = window.scrollY;
+      
+      // Only compute and paint if the hero is actually in the viewport
+      if (scrollY <= heroSection.offsetHeight && !ticking) {
+        window.requestAnimationFrame(updateParallax);
+        ticking = true;
+      }
+    }, { passive: true });
+  });
 </script>
+
+
 
 {% schema %}
 {
@@ -176,7 +164,7 @@
       "type": "text",
       "id": "cta_secondary_text",
       "label": "Secondary Button Text",
-      "default": "Take the Tea Quiz"
+      "default": "Find Your Tea"
     },
     {
       "type": "url",

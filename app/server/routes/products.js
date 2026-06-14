@@ -6,7 +6,13 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
 import { products } from '../db/schema.js';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and } from 'drizzle-orm';
+import {
+  PRODUCT_CATEGORIES,
+  requireEnum,
+  respondWithError,
+} from '../utils/validation.js';
+import { syncProductsFromShopify } from '../services/productSync.js';
 
 const router = Router();
 
@@ -15,15 +21,28 @@ const router = Router();
  */
 router.get('/', async (req, res) => {
   try {
-    const storeId = parseInt(req.query.storeId || '1', 10);
+    const storeId = req.storeId;
     const result = await db.select()
       .from(products)
       .where(eq(products.storeId, storeId))
       .orderBy(desc(products.createdAt));
     res.json(result);
   } catch (error) {
-    console.error('Error fetching products:', error);
-    res.status(500).json({ error: 'Failed to fetch products' });
+    respondWithError(res, error, 'Failed to fetch products');
+  }
+});
+
+/**
+ * POST /api/products/sync?storeId=1
+ * Pull the live Shopify catalog into FreshTrack (OAuth or custom-app token).
+ */
+router.post('/sync', async (req, res) => {
+  try {
+    const storeId = req.storeId;
+    const summary = await syncProductsFromShopify(storeId);
+    res.json(summary);
+  } catch (error) {
+    respondWithError(res, error, 'Failed to sync products from Shopify');
   }
 });
 
@@ -32,11 +51,13 @@ router.get('/', async (req, res) => {
  */
 router.post('/', async (req, res) => {
   try {
-    const { storeId, shopifyProductId, title, category, defaultShelfLifeDays } = req.body;
+    const storeId = req.storeId;
+    const { shopifyProductId, title, category, defaultShelfLifeDays } = req.body;
 
-    if (!storeId || !title) {
-      return res.status(400).json({ error: 'Missing required fields: storeId, title' });
+    if (!title) {
+      return res.status(400).json({ error: 'Missing required field: title' });
     }
+    if (category !== undefined) requireEnum(category, PRODUCT_CATEGORIES, 'category');
 
     const [result] = await db.insert(products).values({
       storeId,
@@ -48,8 +69,7 @@ router.post('/', async (req, res) => {
 
     res.status(201).json({ id: result.insertId, message: 'Product created successfully' });
   } catch (error) {
-    console.error('Error creating product:', error);
-    res.status(500).json({ error: 'Failed to create product' });
+    respondWithError(res, error, 'Failed to create product');
   }
 });
 
@@ -61,17 +81,22 @@ router.put('/:id', async (req, res) => {
     const productId = parseInt(req.params.id, 10);
     const { title, category, defaultShelfLifeDays, shopifyProductId } = req.body;
 
+    const existing = await db.select().from(products)
+      .where(and(eq(products.id, productId), eq(products.storeId, req.storeId)));
+    if (existing.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
     const updates = {};
     if (title !== undefined) updates.title = title;
-    if (category !== undefined) updates.category = category;
+    if (category !== undefined) updates.category = requireEnum(category, PRODUCT_CATEGORIES, 'category');
     if (defaultShelfLifeDays !== undefined) updates.defaultShelfLifeDays = defaultShelfLifeDays;
     if (shopifyProductId !== undefined) updates.shopifyProductId = shopifyProductId;
 
     await db.update(products).set(updates).where(eq(products.id, productId));
     res.json({ message: 'Product updated successfully' });
   } catch (error) {
-    console.error('Error updating product:', error);
-    res.status(500).json({ error: 'Failed to update product' });
+    respondWithError(res, error, 'Failed to update product');
   }
 });
 
@@ -80,11 +105,18 @@ router.put('/:id', async (req, res) => {
  */
 router.delete('/:id', async (req, res) => {
   try {
-    await db.delete(products).where(eq(products.id, parseInt(req.params.id, 10)));
+    const productId = parseInt(req.params.id, 10);
+
+    const existing = await db.select().from(products)
+      .where(and(eq(products.id, productId), eq(products.storeId, req.storeId)));
+    if (existing.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    await db.delete(products).where(eq(products.id, productId));
     res.json({ message: 'Product deleted successfully' });
   } catch (error) {
-    console.error('Error deleting product:', error);
-    res.status(500).json({ error: 'Failed to delete product' });
+    respondWithError(res, error, 'Failed to delete product');
   }
 });
 

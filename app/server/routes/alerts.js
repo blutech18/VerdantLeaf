@@ -6,8 +6,14 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
 import { alertRules } from '../db/schema.js';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and } from 'drizzle-orm';
 import { logActivity } from '../services/freshness.js';
+import {
+  ACTION_TYPES,
+  requireEnum,
+  requireThreshold,
+  respondWithError,
+} from '../utils/validation.js';
 
 const router = Router();
 
@@ -17,7 +23,7 @@ const router = Router();
  */
 router.get('/', async (req, res) => {
   try {
-    const storeId = parseInt(req.query.storeId || '1', 10);
+    const storeId = req.storeId;
 
     const rules = await db
       .select()
@@ -27,8 +33,7 @@ router.get('/', async (req, res) => {
 
     res.json(rules);
   } catch (error) {
-    console.error('Error fetching alert rules:', error);
-    res.status(500).json({ error: 'Failed to fetch alert rules' });
+    respondWithError(res, error, 'Failed to fetch alert rules');
   }
 });
 
@@ -38,24 +43,28 @@ router.get('/', async (req, res) => {
  */
 router.post('/', async (req, res) => {
   try {
-    const { storeId, name, thresholdScore, actionType, actionConfig } = req.body;
+    const storeId = req.storeId;
+    const { name, thresholdScore, actionType, actionConfig } = req.body;
 
-    if (!storeId || !name || thresholdScore === undefined || !actionType) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    if (!name || thresholdScore === undefined || !actionType) {
+      return res.status(400).json({ error: 'Missing required fields: name, thresholdScore, actionType' });
     }
+
+    requireEnum(actionType, ACTION_TYPES, 'actionType');
+    const threshold = requireThreshold(thresholdScore);
 
     const [result] = await db.insert(alertRules).values({
       storeId,
       name,
-      thresholdScore: parseFloat(thresholdScore).toFixed(2),
+      thresholdScore: threshold.toFixed(2),
       actionType,
-      actionConfig: actionConfig ? JSON.stringify(actionConfig) : null,
+      actionConfig: actionConfig || null,
       isActive: true,
     });
 
     await logActivity(storeId, null, 'rule_created',
-      `Alert rule "${name}" created (threshold: ${thresholdScore}%, action: ${actionType})`,
-      { ruleId: result.insertId, threshold: thresholdScore, actionType }
+      `Alert rule "${name}" created (threshold: ${threshold}%, action: ${actionType})`,
+      { ruleId: result.insertId, threshold, actionType }
     );
 
     res.status(201).json({
@@ -63,8 +72,7 @@ router.post('/', async (req, res) => {
       message: 'Alert rule created successfully',
     });
   } catch (error) {
-    console.error('Error creating alert rule:', error);
-    res.status(500).json({ error: 'Failed to create alert rule' });
+    respondWithError(res, error, 'Failed to create alert rule');
   }
 });
 
@@ -77,28 +85,29 @@ router.put('/:id', async (req, res) => {
     const ruleId = parseInt(req.params.id, 10);
     const { name, thresholdScore, actionType, actionConfig, isActive } = req.body;
 
+    const existing = await db.select().from(alertRules)
+      .where(and(eq(alertRules.id, ruleId), eq(alertRules.storeId, req.storeId)));
+    if (existing.length === 0) {
+      return res.status(404).json({ error: 'Alert rule not found' });
+    }
+
     const updates = {};
     if (name !== undefined) updates.name = name;
-    if (thresholdScore !== undefined) updates.thresholdScore = parseFloat(thresholdScore).toFixed(2);
-    if (actionType !== undefined) updates.actionType = actionType;
-    if (actionConfig !== undefined) updates.actionConfig = JSON.stringify(actionConfig);
+    if (thresholdScore !== undefined) updates.thresholdScore = requireThreshold(thresholdScore).toFixed(2);
+    if (actionType !== undefined) updates.actionType = requireEnum(actionType, ACTION_TYPES, 'actionType');
+    if (actionConfig !== undefined) updates.actionConfig = actionConfig;
     if (isActive !== undefined) updates.isActive = isActive;
 
     await db.update(alertRules).set(updates).where(eq(alertRules.id, ruleId));
 
-    // Get rule for logging
-    const rule = await db.select().from(alertRules).where(eq(alertRules.id, ruleId));
-    if (rule.length > 0) {
-      await logActivity(rule[0].storeId, null, 'rule_updated',
-        `Alert rule "${rule[0].name}" updated`,
-        { ruleId, updates: Object.keys(updates) }
-      );
-    }
+    await logActivity(existing[0].storeId, null, 'rule_updated',
+      `Alert rule "${existing[0].name}" updated`,
+      { ruleId, updates: Object.keys(updates) }
+    );
 
     res.json({ message: 'Alert rule updated successfully' });
   } catch (error) {
-    console.error('Error updating alert rule:', error);
-    res.status(500).json({ error: 'Failed to update alert rule' });
+    respondWithError(res, error, 'Failed to update alert rule');
   }
 });
 
@@ -109,20 +118,22 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const ruleId = parseInt(req.params.id, 10);
-    const rule = await db.select().from(alertRules).where(eq(alertRules.id, ruleId));
+    const rule = await db.select().from(alertRules)
+      .where(and(eq(alertRules.id, ruleId), eq(alertRules.storeId, req.storeId)));
 
-    if (rule.length > 0) {
-      await logActivity(rule[0].storeId, null, 'rule_deleted',
-        `Alert rule "${rule[0].name}" deleted`,
-        { ruleId }
-      );
+    if (rule.length === 0) {
+      return res.status(404).json({ error: 'Alert rule not found' });
     }
+
+    await logActivity(rule[0].storeId, null, 'rule_deleted',
+      `Alert rule "${rule[0].name}" deleted`,
+      { ruleId }
+    );
 
     await db.delete(alertRules).where(eq(alertRules.id, ruleId));
     res.json({ message: 'Alert rule deleted successfully' });
   } catch (error) {
-    console.error('Error deleting alert rule:', error);
-    res.status(500).json({ error: 'Failed to delete alert rule' });
+    respondWithError(res, error, 'Failed to delete alert rule');
   }
 });
 

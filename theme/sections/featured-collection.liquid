@@ -15,12 +15,18 @@
       </a>
     </div>
 
-    <div class="featured-collection__products">
+    <div class="featured-collection__slider-container">
+      <button class="featured-collection__nav featured-collection__nav--prev" aria-label="Previous">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      
+      <div class="featured-collection__viewport">
+        <div class="featured-collection__products">
       {% assign featured_collection = section.settings.collection %}
       {% if featured_collection == blank %}
         {% assign featured_collection = collections.all %}
       {% endif %}
-      {% assign products_to_show = section.settings.products_to_show | default: 4 %}
+      {% assign products_to_show = section.settings.products_to_show | default: 6 %}
       {% assign tea_product_count = 0 %}
 
       {% if featured_collection != blank and featured_collection.products.size > 0 %}
@@ -46,9 +52,17 @@
           {% endif %}
         {% endfor %}
       {% endif %}
+        </div>
+      </div>
+      
+      <button class="featured-collection__nav featured-collection__nav--next" aria-label="Next">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
     </div>
   </div>
 </section>
+
+<script src="{{ 'featured-collection.js' | asset_url }}" defer></script>
 
 {% schema %}
 {
@@ -66,7 +80,7 @@
       "min": 2,
       "max": 8,
       "step": 1,
-      "default": 4,
+      "default": 6,
       "label": "Products to show"
     }
   ],

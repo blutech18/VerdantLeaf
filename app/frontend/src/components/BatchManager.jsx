@@ -1,186 +1,341 @@
 import React, { useState, useEffect } from 'react';
 import { formatStatusLabel } from '../utils/activity';
+import { getScoreColor, categoryLabel, shopifyAdminProductUrl } from '../utils/format';
+import { PackageIcon, TrashIcon, ExternalLinkIcon } from './Icons';
+import { getEmbeddedContext } from '../shopifyAppBridge';
+import { api } from '../api';
+import { useToast } from './Toast';
 
-const API_BASE = '/api';
-const STORE_ID = 1;
-
-const MOCK_BATCHES = [
-  { id: 1, productId: 1, lotNumber: 'VL-2026-042', quantity: 100, quantitySold: 12, manufacturedAt: '2026-05-20', expiresAt: '2026-11-20', freshnessScore: 92.5, status: 'active', supplier: 'Uji Tea Farm Co.', productTitle: 'Uji Sencha Reserve', productCategory: 'green_tea' },
-  { id: 2, productId: 2, lotNumber: 'VL-2026-039', quantity: 75, quantitySold: 45, manufacturedAt: '2026-04-15', expiresAt: '2026-10-15', freshnessScore: 72.3, status: 'active', supplier: 'Yunnan Harvest Ltd.', productTitle: 'Golden Yunnan Tips', productCategory: 'black_tea' },
-  { id: 3, productId: 3, lotNumber: 'VL-2026-031', quantity: 50, quantitySold: 30, manufacturedAt: '2026-02-01', expiresAt: '2026-09-01', freshnessScore: 41.2, status: 'warning', supplier: 'Ali Shan Collective', productTitle: 'Ali Shan High Mountain', productCategory: 'oolong' },
-  { id: 4, productId: 2, lotNumber: 'VL-2026-028', quantity: 60, quantitySold: 48, manufacturedAt: '2026-01-10', expiresAt: '2026-06-20', freshnessScore: 12.3, status: 'critical', supplier: 'Yunnan Harvest Ltd.', productTitle: 'Golden Yunnan Tips', productCategory: 'black_tea' },
-  { id: 5, productId: 9, lotNumber: 'VL-2026-045', quantity: 55, quantitySold: 6, manufacturedAt: '2026-05-28', expiresAt: '2027-01-28', freshnessScore: 91.4, status: 'active', supplier: 'Darjeeling Estate', productTitle: 'Darjeeling First Flush', productCategory: 'black_tea' },
-  { id: 6, productId: 9, lotNumber: 'VL-2026-015', quantity: 30, quantitySold: 18, manufacturedAt: '2025-10-15', expiresAt: '2026-04-15', freshnessScore: 0, status: 'expired', supplier: 'Darjeeling Estate', productTitle: 'Darjeeling First Flush', productCategory: 'black_tea' },
-];
-
-const MOCK_PRODUCTS = [
-  { id: 1, title: 'Uji Sencha Reserve', category: 'green_tea' },
-  { id: 2, title: 'Golden Yunnan Tips', category: 'black_tea' },
-  { id: 3, title: 'Ali Shan High Mountain', category: 'oolong' },
-  { id: 4, title: 'Silver Needle Bai Hao', category: 'white_tea' },
-  { id: 5, title: 'Ancient Tree Pu-erh', category: 'puerh' },
-  { id: 6, title: 'Chamomile Meadow Blend', category: 'herbal' },
-  { id: 7, title: 'Ceremonial Grade Matcha', category: 'matcha' },
-  { id: 8, title: 'Dragon Pearl Jasmine', category: 'green_tea' },
-  { id: 9, title: 'Darjeeling First Flush', category: 'black_tea' },
-];
-
-const CATEGORIES = {
-  green_tea: 'Green Tea', black_tea: 'Black Tea', oolong: 'Oolong',
-  white_tea: 'White Tea', puerh: "Pu-erh", herbal: 'Herbal', matcha: 'Matcha', other: 'Other'
-};
-
-function getScoreColor(score) {
-  if (score >= 60) return '#27ae60';
-  if (score >= 30) return '#f39c12';
-  if (score > 0) return '#e74c3c';
-  return '#95a5a6';
-}
+const SHOP_DOMAIN = getEmbeddedContext().shop || 'verdantleafshop.myshopify.com';
 
 export default function BatchManager() {
   const [batches, setBatches] = useState([]);
   const [filter, setFilter] = useState('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [search, setSearch] = useState('');
+  const [sortDir, setSortDir] = useState('desc');
   const [showForm, setShowForm] = useState(false);
   const [editBatch, setEditBatch] = useState(null);
-  const [products, setProducts] = useState(MOCK_PRODUCTS);
+  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [lastSynced, setLastSynced] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+  const notify = useToast();
 
   useEffect(() => {
-    fetchProducts();
-    fetchBatches();
+    syncCatalogAndRefresh({ quiet: true });
   }, []);
 
-  async function fetchBatches() {
+  async function syncCatalogAndRefresh({ quiet = false } = {}) {
+    setSyncing(true);
+    if (!quiet) setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/batches?storeId=${STORE_ID}`);
-      if (res.ok) {
-        setBatches(await res.json());
-      } else {
-        setBatches(MOCK_BATCHES);
+      const summary = await api.syncProducts();
+      setLastSynced(summary.syncedAt);
+      if (!quiet) {
+        notify(
+          `Synced ${summary.total} products from Shopify (${summary.created} new, ${summary.updated} updated).`,
+          'success'
+        );
       }
-    } catch {
-      setBatches(MOCK_BATCHES);
+    } catch (err) {
+      if (!quiet) {
+        notify(`Shopify sync failed: ${err.message}`, 'error');
+      }
+    } finally {
+      setSyncing(false);
+      await Promise.all([fetchProducts(), fetchBatches()]);
     }
-    setLoading(false);
+  }
+
+  async function fetchBatches() {
+    setLoading(true);
+    try {
+      setBatches(await api.getBatches());
+    } catch (err) {
+      setBatches([]);
+      notify(`Could not load batches: ${err.message}`, 'error');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function fetchProducts() {
     try {
-      const res = await fetch(`${API_BASE}/products?storeId=${STORE_ID}`);
-      if (res.ok) {
-        const data = await res.json();
-        setProducts(data.length ? data : MOCK_PRODUCTS);
-      } else {
-        setProducts(MOCK_PRODUCTS);
-      }
+      setProducts(await api.getProducts());
     } catch {
-      setProducts(MOCK_PRODUCTS);
+      setProducts([]);
     }
   }
 
-  const filtered = filter === 'all'
-    ? batches
-    : batches.filter(b => b.status === filter);
+  async function handleDelete(batch) {
+    if (!window.confirm(`Delete batch ${batch.lotNumber}? This cannot be undone.`)) return;
+    try {
+      await api.deleteBatch(batch.id);
+      notify(`Batch ${batch.lotNumber} deleted.`, 'success');
+      fetchBatches();
+    } catch (err) {
+      notify(`Could not delete batch: ${err.message}`, 'error');
+    }
+  }
+
+  const filtered = batches.filter(b => {
+    // Status filter
+    if (filter !== 'all' && b.status !== filter) return false;
+    
+    // Date range filter (each date works independently)
+    const expDate = new Date(b.expiresAt);
+    expDate.setHours(0, 0, 0, 0); // Normalize to start of day
+    
+    if (startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      if (expDate < start) return false;
+    }
+    
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      if (expDate > end) return false;
+    }
+
+    // Search filter
+    if (search) {
+      const term = search.toLowerCase();
+      if (!b.lotNumber?.toLowerCase().includes(term) && 
+          !b.productTitle?.toLowerCase().includes(term) && 
+          !b.supplier?.toLowerCase().includes(term)) {
+        return false;
+      }
+    }
+    return true;
+  }).sort((a, b) => {
+    const timeA = new Date(a.createdAt).getTime();
+    const timeB = new Date(b.createdAt).getTime();
+    return sortDir === 'asc' ? timeA - timeB : timeB - timeA;
+  });
 
   const statusCounts = batches.reduce((acc, b) => {
     acc[b.status] = (acc[b.status] || 0) + 1;
     return acc;
   }, {});
 
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedBatches = filtered.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const statusFilters = [
+    { value: 'all', label: `All (${batches.length})` },
+    ...['active', 'warning', 'critical', 'expired', 'sold_out'].map(f => ({
+      value: f,
+      label: `${formatStatusLabel(f)} ${statusCounts[f] ? `(${statusCounts[f]})` : ''}`
+    }))
+  ];
+
   return (
-    <div>
+    <div className="batch-manager-page">
       <div className="page-header">
-        <h1>Batch Management</h1>
-        <p>Track inventory lots, expiry dates, and how much sellable life remains.</p>
-        <div className="page-header__actions">
-          <button className="btn btn--primary" onClick={() => { setEditBatch(null); setShowForm(true); }}>
-            + New Batch
+        <div className="page-header__row">
+          <h1>Batch Management</h1>
+          {lastSynced && (
+            <span className="page-header__sync-time">
+              Last sync: {new Date(lastSynced).toLocaleString()}
+            </span>
+          )}
+        </div>
+        <div className="page-header__row">
+          <p>
+            Stock and products sync automatically from your Shopify catalog. Edit a row to set the real expiry date and lot details.
+          </p>
+          <button
+            className="btn btn--secondary"
+            onClick={() => syncCatalogAndRefresh()}
+            disabled={syncing}
+          >
+            {syncing ? 'Syncing…' : 'Sync from Shopify'}
           </button>
-          <button className="btn btn--secondary" onClick={fetchBatches}>Update Shelf Life</button>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="filters-bar">
-        {['all', 'active', 'warning', 'critical', 'expired', 'sold_out'].map(f => (
-          <button
-            key={f}
-            className={`filter-chip ${filter === f ? 'active' : ''}`}
-            onClick={() => setFilter(f)}
+      <div className="filter-controls">
+        <div className="ft-control-group">
+          <label>Search</label>
+          <input 
+            type="text" 
+            className="ft-input" 
+            placeholder="Search batches..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+          />
+        </div>
+        <div className="ft-control-group">
+          <label>Status</label>
+          <select 
+            className="ft-select" 
+            value={filter} 
+            onChange={(e) => { setFilter(e.target.value); setCurrentPage(1); }}
           >
-            {f === 'all' ? 'All' : formatStatusLabel(f)}
-            {f !== 'all' && statusCounts[f] ? ` (${statusCounts[f]})` : f === 'all' ? ` (${batches.length})` : ''}
-          </button>
-        ))}
+            {statusFilters.map(f => (
+              <option key={f.value} value={f.value}>{f.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="ft-control-group">
+          <label>Sort</label>
+          <select 
+            className="ft-select" 
+            value={sortDir} 
+            onChange={(e) => { setSortDir(e.target.value); setCurrentPage(1); }}
+          >
+            <option value="desc">Newest</option>
+            <option value="asc">Oldest</option>
+          </select>
+        </div>
+        <div className="ft-control-group">
+          <label>From</label>
+          <input 
+            type="date" 
+            className="ft-date-input" 
+            value={startDate}
+            onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }}
+          />
+        </div>
+        <div className="ft-control-group">
+          <label>To</label>
+          <input 
+            type="date" 
+            className="ft-date-input" 
+            value={endDate}
+            onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }}
+          />
+        </div>
       </div>
 
       {/* Batches Table */}
       <div className="panel">
         <div className="panel__body" style={{ padding: 0 }}>
-          {filtered.length > 0 ? (
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Lot Number</th>
-                  <th>Product</th>
-                  <th>Category</th>
-                  <th>Shelf life left</th>
-                  <th>Next step</th>
-                  <th>Stock</th>
-                  <th>Expires</th>
-                  <th>Supplier</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(batch => {
-                  const score = parseFloat(batch.freshnessScore);
-                  const remaining = batch.quantity - batch.quantitySold;
-                  return (
-                    <tr key={batch.id}>
-                      <td><strong>{batch.lotNumber}</strong></td>
-                      <td>{batch.productTitle}</td>
-                      <td style={{ fontSize: 12 }}>{CATEGORIES[batch.productCategory] || batch.productCategory}</td>
-                      <td>
-                        <div className="freshness-score">
-                          <div className="freshness-score__bar">
-                            <div className="freshness-score__fill" style={{ width: `${Math.max(0, score)}%`, background: getScoreColor(score) }} />
+          {loading ? (
+            <div className="loading-state">
+              <div className="spinner" />
+              Loading batches…
+            </div>
+          ) : filtered.length > 0 ? (
+            <>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Lot Number</th>
+                    <th>Product</th>
+                    <th>Category</th>
+                    <th>Shelf life left</th>
+                    <th>Next step</th>
+                    <th>Stock</th>
+                    <th>Expires</th>
+                    <th>Supplier</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedBatches.map(batch => {
+                    const score = parseFloat(batch.freshnessScore);
+                    const remaining = batch.quantity - batch.quantitySold;
+                    const shopifyUrl = shopifyAdminProductUrl(batch.shopifyProductId, SHOP_DOMAIN);
+                    return (
+                      <tr key={batch.id}>
+                        <td data-label="Lot Number"><strong>{batch.lotNumber}</strong></td>
+                        <td data-label="Product">
+                          {shopifyUrl ? (
+                            <a
+                              className="product-trace-link"
+                              href={shopifyUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title={`View ${batch.productTitle} in Shopify admin`}
+                            >
+                              {batch.productTitle}
+                              <ExternalLinkIcon size={12} />
+                            </a>
+                          ) : (
+                            batch.productTitle
+                          )}
+                        </td>
+                        <td data-label="Category" style={{ fontSize: 12 }}>{categoryLabel(batch.productCategory)}</td>
+                        <td data-label="Shelf life left">
+                          <div className="freshness-score">
+                            <div className="freshness-score__bar">
+                              <div className="freshness-score__fill" style={{ width: `${Math.max(0, score)}%`, background: getScoreColor(score) }} />
+                            </div>
+                            <span style={{ color: getScoreColor(score), fontSize: 12 }}>{score.toFixed(1)}%</span>
                           </div>
-                          <span style={{ color: getScoreColor(score), fontSize: 12 }}>{score.toFixed(1)}%</span>
-                        </div>
-                      </td>
-                      <td>
-                        <span className={`status-badge status-badge--${batch.status}`}>
-                          {formatStatusLabel(batch.status)}
-                        </span>
-                      </td>
-                      <td style={{ fontSize: 12 }}>
-                        {batch.quantitySold}/{batch.quantity}
-                        <div style={{ color: 'var(--ft-text-muted)', fontSize: 11 }}>{remaining} left</div>
-                      </td>
-                      <td style={{ fontSize: 12, color: 'var(--ft-text-muted)' }}>
-                        {new Date(batch.expiresAt).toLocaleDateString()}
-                      </td>
-                      <td style={{ fontSize: 12, color: 'var(--ft-text-muted)' }}>{batch.supplier || '—'}</td>
-                      <td>
-                        <button
-                          className="btn btn--secondary btn--sm"
-                          onClick={() => { setEditBatch(batch); setShowForm(true); }}
-                        >
-                          Edit
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+                        <td data-label="Next step">
+                          <span className={`status-badge status-badge--${batch.status}`}>
+                            {formatStatusLabel(batch.status)}
+                          </span>
+                        </td>
+                        <td data-label="Stock" style={{ fontSize: 13 }}>
+                          {remaining}
+                        </td>
+                        <td data-label="Expires" style={{ fontSize: 12, color: 'var(--ft-text-muted)' }}>
+                          {new Date(batch.expiresAt).toLocaleDateString()}
+                        </td>
+                        <td data-label="Supplier" style={{ fontSize: 12, color: 'var(--ft-text-muted)' }}>{batch.supplier || '—'}</td>
+                        <td data-label="Actions">
+                          <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+                            <button
+                              className="btn btn--secondary btn--sm"
+                              onClick={() => { setEditBatch(batch); setShowForm(true); }}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              className="btn btn--danger btn--sm"
+                              aria-label={`Delete batch ${batch.lotNumber}`}
+                              onClick={() => handleDelete(batch)}
+                            >
+                              <TrashIcon size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderTop: '1px solid var(--ft-border)', flexWrap: 'wrap', gap: '12px' }}>
+                  <span style={{ fontSize: 13, color: 'var(--ft-text-muted)' }}>
+                    Showing {startIndex + 1} to {Math.min(startIndex + ITEMS_PER_PAGE, filtered.length)} of {filtered.length} entries
+                  </span>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button 
+                      className="btn btn--secondary" 
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage(p => p - 1)}
+                    >
+                      Previous
+                    </button>
+                    <button 
+                      className="btn btn--secondary" 
+                      disabled={currentPage === totalPages}
+                      onClick={() => setCurrentPage(p => p + 1)}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <div className="empty-state">
-              <div className="empty-state__icon">📦</div>
-              <div className="empty-state__title">No batches found</div>
+              <div className="empty-state__icon"><PackageIcon size={32} /></div>
+              <div className="empty-state__title">No batches yet</div>
               <div className="empty-state__text">
-                {filter !== 'all' ? 'No batches match this view. Try a different filter.' : 'Create your first batch to start tracking shelf life.'}
+                {filter !== 'all' ? 'No batches match this view. Try a different filter.' : 'Click "Sync from Shopify" to mirror your catalog and start tracking shelf life.'}
               </div>
             </div>
           )}
@@ -202,6 +357,9 @@ export default function BatchManager() {
 
 function BatchFormModal({ batch, products, onClose, onSave }) {
   const isEdit = !!batch;
+  const notify = useToast();
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     productId: batch?.productId || products[0]?.id || 1,
     lotNumber: batch?.lotNumber || '',
@@ -219,23 +377,27 @@ function BatchFormModal({ batch, products, onClose, onSave }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setSaving(true);
+    const payload = {
+      ...form,
+      productId: parseInt(form.productId, 10),
+      quantity: parseInt(form.quantity, 10),
+      quantitySold: parseInt(form.quantitySold || 0, 10),
+    };
     try {
-      const url = isEdit ? `${API_BASE}/batches/${batch.id}` : `${API_BASE}/batches`;
-      const method = isEdit ? 'PUT' : 'POST';
-      await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          productId: parseInt(form.productId, 10),
-          quantity: parseInt(form.quantity, 10),
-          quantitySold: parseInt(form.quantitySold || 0, 10),
-        }),
-      });
+      if (isEdit) {
+        await api.updateBatch(batch.id, payload);
+      } else {
+        await api.createBatch(payload);
+      }
+      notify(`Batch ${form.lotNumber} ${isEdit ? 'updated' : 'created'}.`, 'success');
+      onSave();
     } catch (err) {
-      console.log('Demo mode: form submitted');
+      setError(err.message);
+    } finally {
+      setSaving(false);
     }
-    onSave();
   };
 
   return (
@@ -248,14 +410,16 @@ function BatchFormModal({ batch, products, onClose, onSave }) {
         <form onSubmit={handleSubmit}>
           <div className="modal__body">
             <div className="form-group">
-              <label className="form-label">Product *</label>
-              <select className="form-select" name="productId" value={form.productId} onChange={handleChange} required>
-                {products.map(product => (
-                  <option key={product.id} value={product.id}>
-                    {product.title} ({CATEGORIES[product.category] || product.category})
-                  </option>
-                ))}
-              </select>
+              <label className="form-label">Product</label>
+              <input
+                className="form-input"
+                value={`${batch?.productTitle || ''}${batch?.productCategory ? ` (${categoryLabel(batch.productCategory)})` : ''}`}
+                disabled
+                readOnly
+              />
+              <span style={{ fontSize: 11, color: 'var(--ft-text-muted)' }}>
+                Synced from Shopify — manage the product in your Shopify admin.
+              </span>
             </div>
             <div className="form-group">
               <label className="form-label">Lot Number *</label>
@@ -293,8 +457,11 @@ function BatchFormModal({ batch, products, onClose, onSave }) {
             </div>
           </div>
           <div className="modal__footer">
+            {error && <span className="form-error" style={{ marginRight: 'auto' }}>{error}</span>}
             <button type="button" className="btn btn--secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn--primary">{isEdit ? 'Update Batch' : 'Create Batch'}</button>
+            <button type="submit" className="btn btn--primary" disabled={saving}>
+              {saving ? 'Saving…' : isEdit ? 'Update Batch' : 'Create Batch'}
+            </button>
           </div>
         </form>
       </div>

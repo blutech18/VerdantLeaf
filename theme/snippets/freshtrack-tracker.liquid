@@ -1,0 +1,76 @@
+{% comment %}
+  FreshTrack — Add-to-Cart Tracker
+
+  Forwards storefront add-to-cart events to the FreshTrack admin app so
+  merchants can see live demand in their activity log. The endpoint and store
+  ID are theme settings (Theme settings → FreshTrack Integration); when the
+  endpoint is blank, tracking is disabled and no script is emitted.
+
+  Supports both form-submit and click-based (inline onclick) add-to-cart
+  patterns used across product cards and product pages.
+{% endcomment %}
+
+{%- if settings.freshtrack_endpoint != blank -%}
+<script>
+  (function() {
+    'use strict';
+    var endpoint = {{ settings.freshtrack_endpoint | json }};
+    var storeId = {{ settings.freshtrack_store_id | default: '1' | json }};
+
+    function trackAddToCart(productTitle, quantity) {
+      fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          storeId: storeId,
+          action: 'batch_updated',
+          description: 'User added ' + quantity + 'x "' + productTitle + '" to cart',
+          metadata: { isAddToCart: true, productTitle: productTitle, quantity: quantity }
+        })
+      }).catch(function(err) { console.error('FreshTrack tracking error:', err); });
+    }
+
+    /* Track form-submit based add-to-cart (classic Shopify forms) */
+    document.addEventListener('submit', function(e) {
+      var form = e.target;
+      var action = form && form.getAttribute && form.getAttribute('action');
+      if (!action || action.indexOf('/cart/add') === -1) return;
+
+      var quantity = 1;
+      var qtyInput = form.querySelector('[name="quantity"]');
+      if (qtyInput && qtyInput.value) {
+        quantity = parseInt(qtyInput.value, 10) || 1;
+      }
+
+      var titleEl = document.querySelector('.product-page__title');
+      var productTitle = titleEl ? titleEl.innerText.trim() : 'A product';
+
+      trackAddToCart(productTitle, quantity);
+    });
+
+    /* Track click-based add-to-cart (inline onclick buttons on product cards/pages) */
+    document.addEventListener('click', function(e) {
+      var btn = e.target.closest('[id="add-to-cart"], .product-card__btn--cart');
+      if (!btn) return;
+
+      /* Delay slightly so the fetch to /cart/add.js can fire first */
+      setTimeout(function() {
+        var quantity = 1;
+        var form = btn.closest('form');
+        if (form) {
+          var qtyInput = form.querySelector('[name="quantity"]');
+          if (qtyInput && qtyInput.value) {
+            quantity = parseInt(qtyInput.value, 10) || 1;
+          }
+        }
+
+        var titleEl = document.querySelector('.product-page__title')
+          || btn.closest('.product-card')?.querySelector('.product-card__title');
+        var productTitle = titleEl ? titleEl.innerText.trim() : 'A product';
+
+        trackAddToCart(productTitle, quantity);
+      }, 100);
+    });
+  })();
+</script>
+{%- endif -%}

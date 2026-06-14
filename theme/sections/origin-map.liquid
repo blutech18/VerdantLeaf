@@ -15,7 +15,7 @@
       </p>
     </div>
 
-    <div class="origin-map__wrapper animate-on-scroll stagger-1">
+    <div class="origin-map__wrapper animate-on-scroll stagger-1" style="max-height: none !important;">
       <div class="origin-map__map-card">
         <div
           class="origin-map__canvas"
@@ -29,13 +29,15 @@
         </div>
       </div>
 
-      <article class="origin-map__details" id="origin-details" aria-live="polite">
-        <div class="origin-map__details-header">
-          <div>
-            <span class="section-label" id="origin-region-label">Product Origin</span>
-            <span class="origin-map__counter" data-origin-counter>1 of 1</span>
-          </div>
-          <div class="origin-map__nav" aria-label="Browse mapped tea products">
+      <article class="origin-map__details" id="origin-details" aria-live="polite" style="overflow: visible !important;">
+        <div class="origin-map__product-label-group" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+          <span class="section-label" id="origin-region-label" style="margin-bottom: 0;">Product Origin</span>
+          <span class="origin-map__counter" data-origin-counter style="display: inline-block;">1 of 1</span>
+        </div>
+
+        <div class="origin-map__title-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md); gap: var(--space-sm);">
+          <h3 class="origin-map__product-heading" id="origin-product-title" style="margin: 0;">Select a tea marker</h3>
+          <div class="origin-map__nav" aria-label="Browse mapped tea products" style="margin: 0;">
             <button class="origin-map__nav-button" type="button" data-origin-prev aria-label="Previous product origin">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M15 18l-6-6 6-6" />
@@ -48,8 +50,6 @@
             </button>
           </div>
         </div>
-
-        <h3 class="origin-map__product-heading" id="origin-product-title">Select a tea marker</h3>
         
         <p class="origin-map__note" id="origin-product-note">
           Origin, supplier, SKU, price, and availability will appear here as you browse the catalog.
@@ -77,7 +77,6 @@
         <div class="origin-map__action-row">
           <div class="origin-map__price-wrapper">
             <span class="origin-map__price" id="origin-stat-price">-</span>
-            <span id="origin-stat-status" class="origin-map__status-badge">-</span>
           </div>
           <a class="btn btn--primary btn--sm origin-map__link" id="origin-product-link" href="{{ routes.all_products_collection_url }}">
             View product

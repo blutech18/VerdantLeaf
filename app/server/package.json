@@ -7,17 +7,18 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
+    "build:frontend": "npm --prefix ../frontend install && npm --prefix ../frontend run build",
+    "build": "npm run build:frontend",
     "migrate": "node db/migrate.js",
-    "seed": "node db/seed.js"
+    "seed": "node db/seed.js",
+    "reset": "node db/reset.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "drizzle-orm": "^0.45.2",
     "express": "^4.21.0",
-    "jsonwebtoken": "^9.0.2",
-    "mysql2": "^3.11.0",
-    "node-fetch": "^3.3.2"
+    "mysql2": "^3.11.0"
   },
   "devDependencies": {
     "drizzle-kit": "^0.31.10"

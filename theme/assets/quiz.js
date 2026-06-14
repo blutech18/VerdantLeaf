@@ -176,23 +176,95 @@
       const matchLabel = index === 0 ? 'Best Match' : `${matchPercent}% Match`;
       const tags = tea.tags.map(tag => `<li class="quiz__result-tag">${tag}</li>`).join('');
 
+      // Use dynamic Shopify product data if available
+      const dynamicProduct = window.QuizProducts && window.QuizProducts[key];
+      const displayPrice = dynamicProduct ? dynamicProduct.price : tea.price;
+      const displayUrl = dynamicProduct ? dynamicProduct.url : '/collections/all';
+      const displayImage = dynamicProduct ? dynamicProduct.image : null;
+
+      let imageHtml = '';
+      if (displayImage) {
+        imageHtml = `
+          <img
+            src="${displayImage}"
+            alt="${tea.name}"
+            class="quiz__result-image"
+            loading="lazy"
+            width="480"
+            height="480"
+          />
+        `;
+      } else {
+        imageHtml = `
+          <div class="quiz__result-image tea-product-visual tea-product-visual--${key}" style="width: 100%; height: 100%;">
+            <div class="tea-product-visual__tin">
+              <span class="tea-product-visual__mark"></span>
+              <span class="tea-product-visual__label">${tea.type}</span>
+              <span class="tea-product-visual__origin">${tea.origin}</span>
+            </div>
+            <div class="tea-product-visual__scoop"></div>
+            <div class="tea-product-visual__leaves tea-product-visual__leaves--one"></div>
+            <div class="tea-product-visual__leaves tea-product-visual__leaves--two"></div>
+          </div>
+        `;
+      }
+
+      let stockHtml = '<span style="color: white;">In stock</span>';
+      if (dynamicProduct) {
+        if (dynamicProduct.tracks_inventory) {
+          if (dynamicProduct.total_inventory > 0) {
+            if (dynamicProduct.total_inventory <= 5) {
+              stockHtml = `<span style="color: var(--color-error); font-weight: 600;">Only ${dynamicProduct.total_inventory} left in stock</span>`;
+            } else {
+              stockHtml = `<span style="color: white;">${dynamicProduct.total_inventory} in stock</span>`;
+            }
+          } else if (!dynamicProduct.available) {
+            stockHtml = `<span style="color: var(--color-error);">Out of stock</span>`;
+          }
+        } else if (!dynamicProduct.available) {
+          stockHtml = `<span style="color: var(--color-error);">Out of stock</span>`;
+        }
+      }
+
       return `
         <div class="quiz__result-card">
-          <span class="quiz__result-match">${matchLabel}</span>
-          <div class="quiz__result-icon" style="background: ${tea.color};">
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-              <path d="M5 12h14v3c0 5-3.1 7-7 7S5 20 5 15v-3z" stroke="#faf6f0" stroke-width="1.5" fill="#faf6f0" fill-opacity="0.2"/>
-              <path d="M19 14h2a3 3 0 000-6h-2" stroke="#faf6f0" stroke-width="1.5"/>
-            </svg>
-          </div>
-          <div class="quiz__result-type">${tea.type}</div>
-          <div class="quiz__result-name">${tea.name} · ${tea.origin}</div>
-          <p class="quiz__result-desc">${tea.note}</p>
-          <ul class="quiz__result-tags" aria-label="${tea.type} highlights">${tags}</ul>
-          <div class="quiz__result-price">${tea.price}</div>
-          <a href="/collections/all" class="btn btn--gold btn--sm quiz__result-link">
-            View Tea →
+          <a href="${displayUrl}" class="quiz__result-link-wrapper" aria-label="${tea.name}">
+            <div class="quiz__result-image-wrapper">
+              ${imageHtml}
+              <span class="quiz__result-match">${matchLabel}</span>
+            </div>
+            <div class="quiz__result-body">
+              <div class="quiz__result-type">${tea.origin} · ${tea.type}</div>
+              <h3 class="quiz__result-name">${tea.name}</h3>
+              <p class="quiz__result-desc">${tea.note}</p>
+              <ul class="quiz__result-tags" aria-label="${tea.type} highlights">${tags}</ul>
+              
+              <div class="quiz__result-price-stock" style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; margin-bottom: 4px; width: 100%;">
+                <div style="font-weight: 700; font-size: 16px;">
+                  ${displayPrice}
+                </div>
+                <div style="font-size: 13px; text-align: right;">
+                  ${stockHtml}
+                </div>
+              </div>
+            </div>
           </a>
+          <div class="quiz__result-actions">
+            ${dynamicProduct && dynamicProduct.variant_id ? `
+              <button class="quiz__btn quiz__btn--cart" type="button" aria-label="Add to cart" onclick="event.preventDefault(); fetch('/cart/add.js', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: [{ id: ${dynamicProduct.variant_id}, quantity: 1 }] }) }).then(() => window.location.href = '/cart')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                Add
+              </button>
+              <button class="quiz__btn quiz__btn--buy" type="button" aria-label="Buy now" onclick="event.preventDefault(); fetch('/cart/add.js', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: [{ id: ${dynamicProduct.variant_id}, quantity: 1 }] }) }).then(() => window.location.href = '/checkout')">
+                Buy Now
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 6px;"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
+              </button>
+            ` : `
+              <a href="${displayUrl}" class="quiz__btn quiz__btn--buy" style="width: 100%; text-decoration: none;">
+                View Tea →
+              </a>
+            `}
+          </div>
         </div>
       `;
     }).join('');

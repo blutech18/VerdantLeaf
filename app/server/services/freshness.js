@@ -173,7 +173,10 @@ async function evaluateAlertRules(storeId, batch, newScore, oldScore) {
 }
 
 /**
- * Log an activity
+ * Log an activity.
+ *
+ * `metadata` is passed as a plain object — Drizzle serializes it for the
+ * MySQL `json` column, so stringifying here would double-encode the value.
  */
 async function logActivity(storeId, batchId, action, description, metadata = {}) {
   await db.insert(activityLogs).values({
@@ -181,7 +184,7 @@ async function logActivity(storeId, batchId, action, description, metadata = {})
     batchId,
     action,
     description,
-    metadata: JSON.stringify(metadata),
+    metadata,
   });
 }
 

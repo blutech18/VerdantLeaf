@@ -1,61 +1,114 @@
 import React, { useState, useEffect } from 'react';
-
-const API_BASE = '/api';
-const STORE_ID = 1;
-
-const MOCK_RULES = [
-  { id: 1, name: 'Low Freshness Warning', thresholdScore: '30.00', actionType: 'email', actionConfig: { email_to: 'alerts@verdantleaf.com' }, isActive: true, createdAt: '2026-05-01T10:00:00Z' },
-  { id: 2, name: 'Critical Stock Alert', thresholdScore: '15.00', actionType: 'discount', actionConfig: { discount_percent: 15 }, isActive: true, createdAt: '2026-05-01T10:00:00Z' },
-  { id: 3, name: 'Near Expiry Emergency', thresholdScore: '5.00', actionType: 'discount', actionConfig: { discount_percent: 30 }, isActive: true, createdAt: '2026-05-15T08:00:00Z' },
-  { id: 4, name: 'Webhook Notification', thresholdScore: '20.00', actionType: 'webhook', actionConfig: { webhook_url: 'https://hooks.slack.com/...' }, isActive: false, createdAt: '2026-05-20T14:00:00Z' },
-];
+import { DollarIcon, MailIcon, LinkIcon, LightbulbIcon, BellIcon } from './Icons';
+import { api, getStoreId } from '../api';
+import { useToast } from './Toast';
+// Note: BellIcon kept for empty state
 
 const ACTION_LABELS = {
-  discount: { label: 'Auto-Discount', icon: '💰', color: '#27ae60' },
-  email: { label: 'Email Alert', icon: '📧', color: '#3498db' },
-  webhook: { label: 'Webhook', icon: '🔗', color: '#9b59b6' },
+  discount: { label: 'Auto-Discount', icon: <DollarIcon size={20} />, color: '#27ae60' },
+  email: { label: 'Email Alert', icon: <MailIcon size={20} />, color: '#3498db' },
+  webhook: { label: 'Webhook', icon: <LinkIcon size={20} />, color: '#9b59b6' },
 };
+
+// Recommended default rules for freshness monitoring
+const DEFAULT_RULES = [
+  {
+    name: 'Low Freshness Warning',
+    thresholdScore: 30,
+    actionType: 'email',
+    actionConfig: { email_to: '' },
+    description: 'Get notified when batches drop below 30% shelf life',
+  },
+  {
+    name: 'Critical Stock Alert',
+    thresholdScore: 15,
+    actionType: 'discount',
+    actionConfig: { discount_percent: 15 },
+    description: 'Auto-apply 15% discount when shelf life is under 15%',
+  },
+  {
+    name: 'Near Expiry Emergency',
+    thresholdScore: 5,
+    actionType: 'discount',
+    actionConfig: { discount_percent: 30 },
+    description: 'Apply 30% discount to nearly expired batches',
+  },
+];
+
+async function createDefaultRules(notify, onComplete) {
+  try {
+    for (const rule of DEFAULT_RULES) {
+      await api.createAlert({
+        name: rule.name,
+        thresholdScore: rule.thresholdScore,
+        actionType: rule.actionType,
+        actionConfig: rule.actionConfig,
+      });
+    }
+    notify('Created 3 recommended alert rules!', 'success');
+    onComplete();
+  } catch (err) {
+    notify(`Could not create default rules: ${err.message}`, 'error');
+  }
+}
+
+function parseActionConfig(actionConfig) {
+  if (!actionConfig) return {};
+  return typeof actionConfig === 'string' ? JSON.parse(actionConfig) : actionConfig;
+}
 
 export default function AlertRules() {
   const [rules, setRules] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editRule, setEditRule] = useState(null);
   const [loading, setLoading] = useState(true);
+  const notify = useToast();
 
   useEffect(() => { fetchRules(); }, []);
 
   async function fetchRules() {
+    setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/alerts?storeId=${STORE_ID}`);
-      if (res.ok) setRules(await res.json());
-      else setRules(MOCK_RULES);
-    } catch { setRules(MOCK_RULES); }
-    setLoading(false);
+      setRules(await api.getAlerts());
+    } catch (err) {
+      setRules([]);
+      notify(`Could not load alert rules: ${err.message}`, 'error');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function toggleRule(rule) {
+    // Optimistic update, reverted if the request fails.
+    const next = !rule.isActive;
+    setRules(prev => prev.map(r => r.id === rule.id ? { ...r, isActive: next } : r));
     try {
-      await fetch(`${API_BASE}/alerts/${rule.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isActive: !rule.isActive }),
-      });
-    } catch {}
-    setRules(prev => prev.map(r => r.id === rule.id ? { ...r, isActive: !r.isActive } : r));
+      await api.updateAlert(rule.id, { isActive: next });
+    } catch (err) {
+      setRules(prev => prev.map(r => r.id === rule.id ? { ...r, isActive: rule.isActive } : r));
+      notify(`Could not update rule: ${err.message}`, 'error');
+    }
   }
 
   async function deleteRule(rule) {
-    if (!confirm(`Delete alert rule "${rule.name}"?`)) return;
-    try { await fetch(`${API_BASE}/alerts/${rule.id}`, { method: 'DELETE' }); } catch {}
-    setRules(prev => prev.filter(r => r.id !== rule.id));
+    if (!window.confirm(`Delete alert rule "${rule.name}"?`)) return;
+    try {
+      await api.deleteAlert(rule.id);
+      setRules(prev => prev.filter(r => r.id !== rule.id));
+      notify(`Rule "${rule.name}" deleted.`, 'success');
+    } catch (err) {
+      notify(`Could not delete rule: ${err.message}`, 'error');
+    }
   }
 
   return (
     <div>
       <div className="page-header">
-        <h1>Alert Rules</h1>
-        <p>Set reminders, discounts, and notifications as batches get close to expiry.</p>
-        <div className="page-header__actions">
+        <div className="page-header__row">
+          <h1>Alert Rules</h1>
+        </div>
+        <div className="page-header__row">
+          <p>Set reminders, discounts, and notifications as batches get close to expiry.</p>
           <button className="btn btn--primary" onClick={() => { setEditRule(null); setShowForm(true); }}>
             + New Rule
           </button>
@@ -65,7 +118,7 @@ export default function AlertRules() {
       {/* How It Works */}
       <div className="panel" style={{ marginBottom: 20 }}>
         <div className="panel__body" style={{ display: 'flex', gap: 24, alignItems: 'center', padding: '16px 20px' }}>
-          <div style={{ fontSize: 28 }}>💡</div>
+          <div style={{ color: 'var(--ft-primary)' }}><LightbulbIcon size={28} /></div>
           <div>
             <div style={{ fontWeight: 600, marginBottom: 4 }}>How Alert Rules Work</div>
             <div style={{ fontSize: 13, color: 'var(--ft-text-muted)' }}>
@@ -77,79 +130,96 @@ export default function AlertRules() {
       </div>
 
       {/* Rules List */}
-      {rules.length > 0 ? (
-        <div style={{ display: 'grid', gap: 12 }}>
-          {rules
-            .sort((a, b) => parseFloat(b.thresholdScore) - parseFloat(a.thresholdScore))
-            .map(rule => {
-              const action = ACTION_LABELS[rule.actionType] || ACTION_LABELS.email;
-              const config = typeof rule.actionConfig === 'string' ? JSON.parse(rule.actionConfig) : (rule.actionConfig || {});
+      {loading ? (
+        <div className="panel">
+          <div className="loading-state">
+            <div className="spinner" />
+            Loading alert rules…
+          </div>
+        </div>
+      ) : rules.length > 0 ? (
+        <div className="panel">
+          <div className="panel__body" style={{ padding: 0 }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Rule Name</th>
+                  <th>Trigger Condition</th>
+                  <th>Automation Action</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...rules]
+                  .sort((a, b) => parseFloat(b.thresholdScore) - parseFloat(a.thresholdScore))
+                  .map(rule => {
+                    const action = ACTION_LABELS[rule.actionType] || ACTION_LABELS.email;
+                    const config = parseActionConfig(rule.actionConfig);
 
-              return (
-                <div className="panel" key={rule.id} style={{ opacity: rule.isActive ? 1 : 0.6 }}>
-                  <div className="panel__body" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px' }}>
-                    {/* Action Icon */}
-                    <div style={{
-                      width: 44, height: 44, borderRadius: 10,
-                      background: `${action.color}15`, display: 'flex',
-                      alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0
-                    }}>
-                      {action.icon}
-                    </div>
-
-                    {/* Rule Info */}
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, marginBottom: 2 }}>
-                        {rule.name}
-                        {!rule.isActive && <span style={{ fontSize: 11, color: 'var(--ft-text-muted)', marginLeft: 8 }}>(disabled)</span>}
-                      </div>
-                      <div style={{ fontSize: 12, color: 'var(--ft-text-muted)' }}>
-                        When shelf life is under <strong style={{ color: 'var(--ft-danger)' }}>{parseFloat(rule.thresholdScore).toFixed(0)}%</strong>
-                        {' → '}
-                        <span style={{ color: action.color, fontWeight: 500 }}>
-                          {rule.actionType === 'discount' && config.discount_percent
-                            ? `Apply ${config.discount_percent}% discount`
-                            : rule.actionType === 'email' && config.email_to
-                            ? `Email ${config.email_to}`
-                            : rule.actionType === 'webhook'
-                            ? 'Fire webhook'
-                            : action.label}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Threshold Badge */}
-                    <div style={{
-                      background: 'var(--ft-bg)', padding: '6px 14px', borderRadius: 8,
-                      fontSize: 18, fontWeight: 700, color: 'var(--ft-danger)',
-                    }}>
-                      {parseFloat(rule.thresholdScore).toFixed(0)}%
-                    </div>
-
-                    {/* Actions */}
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button className="btn btn--secondary btn--sm" onClick={() => toggleRule(rule)}>
-                        {rule.isActive ? 'Disable' : 'Enable'}
-                      </button>
-                      <button className="btn btn--secondary btn--sm" onClick={() => { setEditRule(rule); setShowForm(true); }}>
-                        Edit
-                      </button>
-                      <button className="btn btn--danger btn--sm" onClick={() => deleteRule(rule)}>
-                        ×
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                    return (
+                      <tr key={rule.id} style={{ opacity: rule.isActive ? 1 : 0.6 }}>
+                        <td data-label="Rule Name">
+                          <strong>{rule.name}</strong>
+                        </td>
+                        <td data-label="Trigger Condition">
+                          <div>
+                            Under <strong style={{ color: 'var(--ft-danger)' }}>{parseFloat(rule.thresholdScore).toFixed(0)}%</strong>
+                          </div>
+                        </td>
+                        <td data-label="Automation Action">
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textAlign: 'left', color: action.color, fontWeight: 500, background: `${action.color}15`, padding: '6px 10px', borderRadius: 6, fontSize: 12, maxWidth: '100%' }}>
+                            <span style={{ display: 'flex', flexShrink: 0 }}>
+                              {action.icon}
+                            </span>
+                            <span style={{ wordBreak: 'break-word', whiteSpace: 'normal' }}>
+                              {rule.actionType === 'discount' && config.discount_percent
+                                ? `Apply ${config.discount_percent}% discount`
+                                : rule.actionType === 'email' && config.email_to
+                                ? <><span className="hide-on-mobile">Email </span>{config.email_to}</>
+                                : rule.actionType === 'webhook'
+                                ? 'Fire webhook'
+                                : action.label}
+                            </span>
+                          </div>
+                        </td>
+                        <td data-label="Status">
+                          <span className={`status-badge ${rule.isActive ? 'status-badge--active' : 'status-badge--expired'}`}>
+                            {rule.isActive ? 'Active' : 'Disabled'}
+                          </span>
+                        </td>
+                        <td data-label="Actions">
+                          <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+                            <button className="btn btn--secondary btn--sm" onClick={() => toggleRule(rule)}>
+                              {rule.isActive ? 'Disable' : 'Enable'}
+                            </button>
+                            <button className="btn btn--secondary btn--sm" onClick={() => { setEditRule(rule); setShowForm(true); }}>
+                              Edit
+                            </button>
+                            <button className="btn btn--danger btn--sm" onClick={() => deleteRule(rule)}>
+                              ×
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         <div className="panel">
           <div className="empty-state">
-            <div className="empty-state__icon">🔔</div>
+            <div className="empty-state__icon"><BellIcon size={32} /></div>
             <div className="empty-state__title">No alert rules yet</div>
             <div className="empty-state__text">Create your first rule to automate freshness monitoring.</div>
-            <button className="btn btn--primary" onClick={() => setShowForm(true)}>+ New Rule</button>
+            <div style={{ display: 'flex', gap: 12, marginTop: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
+              <button className="btn btn--primary" onClick={() => setShowForm(true)}>+ New Rule</button>
+              <button className="btn btn--secondary" onClick={() => createDefaultRules(notify, fetchRules)}>
+                Create Recommended Rules
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -168,12 +238,13 @@ export default function AlertRules() {
 
 function RuleFormModal({ rule, onClose, onSave }) {
   const isEdit = !!rule;
-  const config = rule?.actionConfig
-    ? (typeof rule.actionConfig === 'string' ? JSON.parse(rule.actionConfig) : rule.actionConfig)
-    : {};
+  const notify = useToast();
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const config = parseActionConfig(rule?.actionConfig);
 
   const [form, setForm] = useState({
-    storeId: STORE_ID,
+    storeId: getStoreId(),
     name: rule?.name || '',
     thresholdScore: rule?.thresholdScore ? parseFloat(rule.thresholdScore) : '',
     actionType: rule?.actionType || 'email',
@@ -188,13 +259,16 @@ function RuleFormModal({ rule, onClose, onSave }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setSaving(true);
+
     const actionConfig = {};
-    if (form.actionType === 'discount') actionConfig.discount_percent = parseInt(form.discountPercent);
+    if (form.actionType === 'discount') actionConfig.discount_percent = parseInt(form.discountPercent, 10);
     if (form.actionType === 'email') actionConfig.email_to = form.emailTo;
     if (form.actionType === 'webhook') actionConfig.webhook_url = form.webhookUrl;
 
     const payload = {
-      storeId: STORE_ID,
+      storeId: getStoreId(),
       name: form.name,
       thresholdScore: form.thresholdScore,
       actionType: form.actionType,
@@ -202,14 +276,18 @@ function RuleFormModal({ rule, onClose, onSave }) {
     };
 
     try {
-      const url = isEdit ? `${API_BASE}/alerts/${rule.id}` : `${API_BASE}/alerts`;
-      await fetch(url, {
-        method: isEdit ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-    } catch {}
-    onSave();
+      if (isEdit) {
+        await api.updateAlert(rule.id, payload);
+      } else {
+        await api.createAlert(payload);
+      }
+      notify(`Rule "${form.name}" ${isEdit ? 'updated' : 'created'}.`, 'success');
+      onSave();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -225,20 +303,22 @@ function RuleFormModal({ rule, onClose, onSave }) {
               <label className="form-label">Rule Name *</label>
               <input className="form-input" name="name" value={form.name} onChange={handleChange} required placeholder="e.g. Low Freshness Warning" />
             </div>
-            <div className="form-group">
-              <label className="form-label">Alert Level (%) *</label>
-              <input className="form-input" name="thresholdScore" type="number" min="1" max="99" value={form.thresholdScore} onChange={handleChange} required placeholder="e.g. 30" />
-              <div style={{ fontSize: 11, color: 'var(--ft-text-muted)', marginTop: 4 }}>
-                The action runs when a batch has less shelf life left than this value.
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Alert Level (%) *</label>
+                <input className="form-input" name="thresholdScore" type="number" min="1" max="99" value={form.thresholdScore} onChange={handleChange} required placeholder="e.g. 30" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Action Type *</label>
+                <select className="form-select" name="actionType" value={form.actionType} onChange={handleChange}>
+                  <option value="email">Send Email Alert</option>
+                  <option value="discount">Auto-Apply Discount</option>
+                  <option value="webhook">Fire Webhook</option>
+                </select>
               </div>
             </div>
-            <div className="form-group">
-              <label className="form-label">Action Type *</label>
-              <select className="form-select" name="actionType" value={form.actionType} onChange={handleChange}>
-                <option value="email">📧 Send Email Alert</option>
-                <option value="discount">💰 Auto-Apply Discount</option>
-                <option value="webhook">🔗 Fire Webhook</option>
-              </select>
+            <div style={{ fontSize: 11, color: 'var(--ft-text-muted)', marginTop: -8, marginBottom: 16 }}>
+              The action runs when a batch has less shelf life left than the alert level.
             </div>
 
             {form.actionType === 'discount' && (
@@ -261,8 +341,11 @@ function RuleFormModal({ rule, onClose, onSave }) {
             )}
           </div>
           <div className="modal__footer">
+            {error && <span className="form-error" style={{ marginRight: 'auto' }}>{error}</span>}
             <button type="button" className="btn btn--secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn--primary">{isEdit ? 'Update Rule' : 'Create Rule'}</button>
+            <button type="submit" className="btn btn--primary" disabled={saving}>
+              {saving ? 'Saving…' : isEdit ? 'Update Rule' : 'Create Rule'}
+            </button>
           </div>
         </form>
       </div>

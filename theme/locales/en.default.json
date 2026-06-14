@@ -7,7 +7,7 @@
     "menu_home": "Home",
     "menu_shop": "Shop",
     "menu_about": "Our Story",
-    "menu_quiz": "Tea Quiz",
+    "menu_quiz": "Find Your Tea",
     "cart": "Cart"
   },
   "hero": {
@@ -15,7 +15,7 @@
     "title": "From Leaf to <em>Cup</em>",
     "subtitle": "Discover single-origin teas sourced directly from small farms across the world's finest growing regions.",
     "cta_primary": "Shop Collection",
-    "cta_secondary": "Take the Tea Quiz"
+    "cta_secondary": "Find Your Tea"
   },
   "origin_map": {
     "label": "Global Origins",
@@ -28,12 +28,16 @@
     "subtitle": "Master the art of brewing with these essential steps.",
     "step1_title": "Measure",
     "step1_desc": "Use 2g of loose leaf per 200ml of water for the perfect ratio.",
+    "step1_tip": "Pro Tip: Weigh your leaves using a digital scale for consistency.",
     "step2_title": "Heat",
     "step2_desc": "Each tea has its ideal temperature. Green at 75°C, black at 95°C.",
+    "step2_tip": "Pro Tip: Preheat your teapot with hot water before brewing.",
     "step3_title": "Steep",
     "step3_desc": "Patience is key. 2-3 min for green, 3-5 min for black teas.",
+    "step3_tip": "Pro Tip: Don't oversteep! Use a timer to capture the perfect flavor.",
     "step4_title": "Enjoy",
-    "step4_desc": "Savor the aroma first, then taste. Each sip reveals new layers."
+    "step4_desc": "Savor the aroma first, then taste. Each sip reveals new layers.",
+    "step4_tip": "Pro Tip: High-quality leaves can be steeped multiple times."
   },
   "featured_collection": {
     "label": "Curated Selection",
@@ -75,6 +79,7 @@
   },
   "product": {
     "add_to_cart": "Add to Cart",
+    "buy_now": "Buy Now",
     "sold_out": "Sold Out",
     "quantity": "Quantity",
     "description": "Description",
@@ -106,11 +111,11 @@
   "quiz": {
     "title": "Find Your Perfect Tea",
     "subtitle": "Answer a few questions and we'll recommend teas tailored to your taste.",
-    "start": "Start Quiz",
+    "start": "Find My Tea",
     "next": "Next",
     "back": "Back",
     "see_results": "See My Results",
-    "restart": "Retake Quiz",
+    "restart": "Start Over",
     "result_title": "Your Tea Match",
     "result_subtitle": "Based on your preferences, we think you'll love these teas.",
     "q1_title": "What flavors do you gravitate toward?",

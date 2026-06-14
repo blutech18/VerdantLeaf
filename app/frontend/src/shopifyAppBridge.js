@@ -1,7 +1,24 @@
 import createApp from '@shopify/app-bridge';
 import { TitleBar } from '@shopify/app-bridge/actions';
+import { getSessionToken } from '@shopify/app-bridge/utilities';
 
 const API_KEY = import.meta.env.VITE_SHOPIFY_API_KEY || '';
+
+let appInstance = null;
+
+/**
+ * Returns a fresh Shopify session token (JWT) for authenticating API calls,
+ * or null when not running embedded (local dev). App Bridge rotates these
+ * short-lived tokens automatically on each request.
+ */
+export async function getAppBridgeSessionToken() {
+  if (!appInstance) return null;
+  try {
+    return await getSessionToken(appInstance);
+  } catch {
+    return null;
+  }
+}
 
 export function getEmbeddedContext(search = window.location.search) {
   const params = new URLSearchParams(search);
@@ -30,6 +47,7 @@ export function initializeShopifyAppBridge(search = window.location.search) {
     forceRedirect: true,
   });
 
+  appInstance = app;
   TitleBar.create(app, { title: 'FreshTrack' });
 
   window.__FRESHTRACK_APP_BRIDGE__ = app;

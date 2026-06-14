@@ -16,5 +16,31 @@
         "label": "Favicon"
       }
     ]
+  },
+  {
+    "name": "FreshTrack Integration",
+    "settings": [
+      {
+        "type": "header",
+        "content": "Storefront analytics"
+      },
+      {
+        "type": "paragraph",
+        "content": "Sends add-to-cart events to the FreshTrack admin app. Leave the endpoint blank to disable tracking."
+      },
+      {
+        "type": "text",
+        "id": "freshtrack_endpoint",
+        "label": "FreshTrack tracking endpoint",
+        "info": "e.g. https://your-app.example.com/api/logs/track",
+        "default": "http://localhost:3000/api/logs/track"
+      },
+      {
+        "type": "text",
+        "id": "freshtrack_store_id",
+        "label": "FreshTrack store ID",
+        "default": "1"
+      }
+    ]
   }
 ]

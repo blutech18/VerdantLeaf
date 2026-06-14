@@ -5,6 +5,9 @@
 
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import './config/env.js';
 
 import authRoutes from './routes/auth.js';
@@ -14,15 +17,25 @@ import dashboardRoutes from './routes/dashboard.js';
 import logRoutes from './routes/logs.js';
 import productRoutes from './routes/products.js';
 import embeddedRoutes, { normalizeShop } from './routes/embedded.js';
+import webhookRoutes from './routes/webhooks.js';
+import { resolveStore } from './utils/sessionAuth.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DIST_PATH = path.resolve(__dirname, '../frontend/dist');
+const HAS_BUILT_FRONTEND = fs.existsSync(path.join(DIST_PATH, 'index.html'));
+
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, callback) => callback(null, true),
   credentials: true,
 }));
+
+// Webhooks need the raw body for HMAC verification (must be before express.json)
+app.use('/webhooks', express.raw({ type: 'application/json' }), webhookRoutes);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -55,11 +68,31 @@ app.get('/health', (req, res) => {
 // Routes
 app.use('/', embeddedRoutes);
 app.use('/auth', authRoutes);
-app.use('/api/batches', batchRoutes);
-app.use('/api/alerts', alertRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/logs', logRoutes);
-app.use('/api/products', productRoutes);
+
+// Authenticated data routes — scoped to the session-token's shop (see sessionAuth).
+app.use('/api/batches', resolveStore, batchRoutes);
+app.use('/api/alerts', resolveStore, alertRoutes);
+app.use('/api/dashboard', resolveStore, dashboardRoutes);
+app.use('/api/logs', logRoutes); // GET is authenticated inside the router; /track is public for the storefront
+app.use('/api/products', resolveStore, productRoutes);
+
+// Serve the built React app (production single-service deploy). In dev the Vite
+// server handles this instead. API/auth/webhook paths are excluded from the
+// SPA fallback so they keep returning JSON.
+if (HAS_BUILT_FRONTEND) {
+  app.use(express.static(DIST_PATH));
+  app.get('*', (req, res, next) => {
+    if (
+      req.path.startsWith('/api') ||
+      req.path.startsWith('/auth') ||
+      req.path.startsWith('/webhooks') ||
+      req.path === '/health'
+    ) {
+      return next();
+    }
+    res.sendFile(path.join(DIST_PATH, 'index.html'));
+  });
+}
 
 // 404 handler
 app.use((req, res) => {
@@ -76,5 +109,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`\nFreshTrack server running on port ${PORT}`);
   console.log(`   Health: http://localhost:${PORT}/health`);
-  console.log(`   API:    http://localhost:${PORT}/api\n`);
+  console.log(`   API:    http://localhost:${PORT}/api`);
+  console.log(`   Env:    ${process.env.APP_ENV || process.env.NODE_ENV || 'development'}`);
+  console.log(`   Frontend: ${HAS_BUILT_FRONTEND ? 'serving frontend/dist (single-service)' : 'not built — run "npm run build" in frontend/ for production'}\n`);
 });
